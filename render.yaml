@@ -4,4 +4,4 @@ services:
     env: node
     plan: free
     startCommand: npm start
-    buildCommand: npm install && npx prisma generate && npx prisma db push
+    buildCommand: npm install && npx prisma generate
