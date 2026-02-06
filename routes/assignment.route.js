@@ -18,12 +18,18 @@ router.get("/", requireAuth, async (req, res) => {
 router.get("/job/:jobId", async (req, res) => {
   const { jobId } = req.params;
   try {
+    console.log(`Fetching assignment for jobId: ${jobId}`);
+    
     const assignment = await prisma.assignment.findUnique({
-      where: { jobId },
-      include: { assignmentStarts: true, job: true },
+      where: { jobId: String(jobId) },
+      include: { 
+        job: true,
+        assignmentStarts: true 
+      },
     });
 
     if (!assignment) {
+      console.log(`No assignment found for jobId: ${jobId}`);
       return res
         .status(404)
         .json({ error: "Assignment not found for this job" });
@@ -36,8 +42,9 @@ router.get("/job/:jobId", async (req, res) => {
 
     res.json({ ...assignment, downloadAssets });
   } catch (err) {
+    console.error("Error fetching assignment by jobId:", err.message);
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message || "Failed to fetch assignment" });
   }
 });
 
