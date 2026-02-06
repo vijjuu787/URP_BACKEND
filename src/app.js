@@ -2,17 +2,17 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
-const pool = require("./db");
+const pool = require("../db");
 
-const userRoutes = require("./routes/users.routes");
-const candidateSkillRoutes = require("./routes/candidateSkill.routes");
-const jobPostRoutes = require("./routes/jobPost.route");
-const AssignmentRoutes = require("./routes/assignment.route");
-const assignmentSubmissionRoutes = require("./routes/assigmentSubmission.route");
-const assignmentReviewRoutes = require("./routes/assigmentReview.route");
-const engineerAssignBYAdminRoutes = require("./routes/engineerAssignBYAdmin.route");
-const assignmentStartRoute = require("./routes/assignmentStart.route");
-const profileRoutes = require("./routes/profile.route");
+const userRoutes = require("../routes/users.routes");
+const candidateSkillRoutes = require("../routes/candidateSkill.routes");
+const jobPostRoutes = require("../routes/jobPost.route");
+const AssignmentRoutes = require("../routes/assignment.route");
+const assignmentSubmissionRoutes = require("../routes/assigmentSubmission.route");
+const assignmentReviewRoutes = require("../routes/assigmentReview.route");
+const engineerAssignBYAdminRoutes = require("../routes/engineerAssignBYAdmin.route");
+const assignmentStartRoute = require("../routes/assignmentStart.route");
+const profileRoutes = require("../routes/profile.route");
 
 const app = express();
 app.use(

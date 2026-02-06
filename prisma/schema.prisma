@@ -129,6 +129,7 @@ model JobPosting {
 model Assignment {
   id               String            @id @default(uuid())
   title            String
+  overview         String?
   techStack        String[]          @default([])
   jobId            String            @unique
   job              JobPosting        @relation(fields: [jobId], references: [id], onDelete: Cascade)
