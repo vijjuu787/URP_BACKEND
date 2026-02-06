@@ -4,5 +4,4 @@ services:
     env: node
     plan: free
     startCommand: npm start
-    buildCommand: npm install && npm run build
-
+    buildCommand: npm install
