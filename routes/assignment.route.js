@@ -14,8 +14,8 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
-// Get assignment by jobId
-router.get("/job/:jobId", requireAuth, async (req, res) => {
+// Get assignment by jobId (PUBLIC - no auth required)
+router.get("/job/:jobId", async (req, res) => {
   const { jobId } = req.params;
   try {
     const assignment = await prisma.assignment.findUnique({
