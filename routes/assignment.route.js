@@ -4,6 +4,21 @@ const pool = require("../db");
 const { prisma } = require("../prisma/index.js");
 const requireAuth = require("../middleware/AuthMiddleware.js");
 
+// Valid difficulty levels from the DifficultyLevel enum
+const VALID_DIFFICULTY_LEVELS = ["EASY", "MEDIUM", "HARD"];
+
+// Helper function to validate and normalize difficulty
+function validateDifficulty(difficulty) {
+  if (!difficulty) return null;
+  const normalized = difficulty.toUpperCase();
+  if (!VALID_DIFFICULTY_LEVELS.includes(normalized)) {
+    throw new Error(
+      `Invalid difficulty level. Must be one of: ${VALID_DIFFICULTY_LEVELS.join(", ")}`,
+    );
+  }
+  return normalized;
+}
+
 router.get("/", requireAuth, async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM assignments");
@@ -19,12 +34,12 @@ router.get("/job/:jobId", async (req, res) => {
   const { jobId } = req.params;
   try {
     console.log(`Fetching assignment for jobId: ${jobId}`);
-    
+
     const assignment = await prisma.assignment.findUnique({
       where: { jobId: String(jobId) },
-      include: { 
+      include: {
         job: true,
-        assignmentStarts: true 
+        assignmentStarts: true,
       },
     });
 
@@ -44,7 +59,9 @@ router.get("/job/:jobId", async (req, res) => {
   } catch (err) {
     console.error("Error fetching assignment by jobId:", err.message);
     console.error(err);
-    res.status(500).json({ error: err.message || "Failed to fetch assignment" });
+    res
+      .status(500)
+      .json({ error: err.message || "Failed to fetch assignment" });
   }
 });
 
@@ -58,6 +75,7 @@ router.post("/", requireAuth, async (req, res) => {
     downloadAssets,
     timeLimitHours,
   } = req.body;
+  const jobId = req.body.jobId; // jobId is required to link assignment to a job posting
 
   // Validate required fields
   if (
@@ -65,7 +83,8 @@ router.post("/", requireAuth, async (req, res) => {
     !description ||
     !difficulty ||
     !totalPoints ||
-    !timeLimitHours
+    !timeLimitHours ||
+    !jobId
   ) {
     return res.status(400).json({
       error:
@@ -74,16 +93,19 @@ router.post("/", requireAuth, async (req, res) => {
   }
 
   try {
-    // Verify jobId exists
-    // const jobExists = await prisma.jobPosting.findUnique({
-    //   where: { id: jobId },
-    // });
+    // Validate difficulty enum
+    const normalizedDifficulty = validateDifficulty(difficulty);
 
-    // if (!jobExists) {
-    //   return res.status(404).json({
-    //     error: "JobPosting with specified jobId not found",
-    //   });
-    // }
+    // Verify jobId exists
+    const jobExists = await prisma.jobPosting.findUnique({
+      where: { id: jobId },
+    });
+
+    if (!jobExists) {
+      return res.status(404).json({
+        error: "JobPosting with specified jobId not found",
+      });
+    }
 
     // Convert downloadAssets if provided
     let downloadAssetsBuffer = null;
@@ -101,10 +123,13 @@ router.post("/", requireAuth, async (req, res) => {
       data: {
         title,
         description,
-        difficulty,
+        difficulty: normalizedDifficulty,
         totalPoints,
         downloadAssets: downloadAssetsBuffer || Buffer.from(""),
         timeLimitHours,
+        job: {
+          connect: { id: jobId },
+        },
       },
     });
 
