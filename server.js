@@ -23,11 +23,17 @@ const cors = require("cors");
 // Initialize Express app
 const app = express();
 
-// Middleware
+// CORS Configuration - Allow frontend to communicate with backend
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: [
+      "http://localhost:5173",           // Local development (Vite)
+      "http://localhost:3000",           // Local development (alternate)
+      "https://urp-frontend-inin.vercel.app" // Production Vercel frontend
+    ],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 app.use(express.json());
@@ -37,7 +43,7 @@ app.get("/", (req, res) => {
   res.json({ status: "Server is running 🚀" });
 });
 
-// Import routes - these must not have side effects like process.exit()
+// Import routes
 let routes = {};
 try {
   routes.users = require("./routes/users.routes");
@@ -71,11 +77,19 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Internal Server Error" });
 });
 
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: "Not Found" });
+});
+
 // Start server
 const PORT = process.env.PORT || 5100;
 
 app.listen(PORT, () => {
   console.log(`✓ Server is running on port ${PORT}`);
+  console.log(`✓ CORS enabled for:`);
+  console.log(`  - http://localhost:5173 (local)`);
+  console.log(`  - https://urp-frontend-inin.vercel.app (production)`);
 });
 
 // Keep process alive
