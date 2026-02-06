@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String                 @id @default(uuid())
+  fullName              String
+  email                 String                 @unique
+  passwordHash          String
+  resumeUrl             String?
+  resumeFileName        String?
+  resumeUploadedAt      DateTime               @default(now())
+  role                  UserRole               @default(candidate)
+  isActive              Boolean                @default(true)
+  createdAt             DateTime               @default(now())
+  assignmentStarts      AssignmentStart[]
+  assignmentReviews     AssignmentReview[]
+  assignmentSubmissions AssignmentSubmission[]
+  candidateSkills       CandidateSkill?
+  userProfile           UserProfile?
+  assignmentsMade       EngineerAssignment[]   @relation("AssignedByAdmin")
+  engineerAssignments   EngineerAssignment[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  id                 String          @id @default(uuid())
+  userId             String          @unique
+  headline           String?
+  summary            String?
+  location           String?
+  phone              String?
+  experiences        Experience[]
+  educations         Education[]
+  skills             ProfileSkills?
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@map("user_profiles")
+}
+
+model Experience {
+  id          String      @id @default(uuid())
+  profileId   String
+  company     String
+  role        String
+  location    String?
+  startDate   String?
+  endDate     String?
+  description String?
+  profile     UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("experiences")
+}
+
+model Education {
+  id              String      @id @default(uuid())
+  profileId       String
+  degree          String
+  institution     String
+  location        String?
+  graduationYear  String?
+  profile         UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@map("educations")
+}
+
+model ProfileSkills {
+  id        String      @id @default(uuid())
+  profileId String      @unique
+  frontend  String[]    @default([])
+  backend   String[]    @default([])
+  tools     String[]    @default([])
+  profile   UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@map("profile_skills")
+}
+
+model CandidateSkill {
+  id                   String @id @default(uuid())
+  userId               String @unique
+  primaryRole          String
+  secondaryRole        Role
+  experienceLevel      String
+  skill                String
+  workType             String
+  jobType              String
+  experienceAndProject String
+  user                 User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("candidates")
+}
+
+model JobPosting {
+  id               String            @id @default(uuid())
+  title            String
+  description      String
+  workType         String?
+  roleType         String?
+  requirements     String?
+  difficulty       DifficultyLevel
+  responsibilities String?
+  experienceLevel  String?
+  salaryRange      String?
+  points           Int?
+  status           String            @default("open")
+  postDate         DateTime          @default(now())
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  assignment       Assignment?
+  assignmentStarts AssignmentStart[]
+
+  @@map("job_postings")
+}
+
+model Assignment {
+  id               String            @id @default(uuid())
+  title            String
+  techStack        String[]          @default([])
+  jobId            String            @unique
+  job              JobPosting        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  description      String
+  difficulty       DifficultyLevel
+  totalPoints      Int
+  downloadAssets   Bytes
+  timeLimitHours   Int
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  assignmentStarts AssignmentStart[]
+
+  @@map("assignments")
+}
+model AssignmentStart {
+  id           String     @id @default(uuid())
+  jobId        String
+  candidateId  String
+  assignmentId String
+  startedAt    DateTime   @default(now())
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  candidate    User       @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job          JobPosting @relation(fields: [jobId], references: [id], onDelete: Cascade)
+}
+
+model AssignmentSubmission {
+  id                  String               @id @default(uuid())
+  candidateId         String
+  assignmentId        String
+  assignmentStartedAt DateTime             @default(now())
+  submittedAt         DateTime?
+  timeTakenMinutes    Int?
+  deadline            DateTime?
+  status              AssignmentStatus     @default(NOT_STARTED)
+  candidateNotes      String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  submissionFiles     SubmissionFile[]
+  reviews             AssignmentReview[]
+  candidate           User                 @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  engineerAssignments EngineerAssignment[]
+
+  @@unique([assignmentId, candidateId])
+  @@map("assignment_submissions")
+}
+
+model SubmissionFile {
+  id           String               @id @default(uuid())
+  submissionId String
+  fileName     String
+  fileType     SubmissionFileType
+  fileUrl      String
+  uploadedAt   DateTime             @default(now())
+  submission   AssignmentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model AssignmentReview {
+  id                       String                @id @default(uuid())
+  submissionId             String
+  engineerId               String
+  codeQualityScore         Int
+  logicProblemSolvingScore Int
+  bestPracticesScore       Int
+  totalScore               Float
+  feedback                 String?
+  status                   ReviewStatus          @default(DRAFT)
+  recommendation           ReviewRecommendation?
+  reviewedAt               DateTime?
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+  engineer                 User                  @relation(fields: [engineerId], references: [id], onDelete: Cascade)
+  submission               AssignmentSubmission  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, engineerId])
+  @@map("assignment_reviews")
+}
+
+model EngineerAssignment {
+  id           String                   @id @default(uuid())
+  submissionId String
+  engineerId   String
+  assignedById String
+  status       EngineerAssignmentStatus @default(PENDING)
+  assignedAt   DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  assignedBy   User                     @relation("AssignedByAdmin", fields: [assignedById], references: [id])
+  engineer     User                     @relation(fields: [engineerId], references: [id], onDelete: Cascade)
+  submission   AssignmentSubmission     @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, engineerId])
+  @@map("engineer_assignments")
+}
+
+enum UserRole {
+  candidate
+  engineer
+  admin
+}
+
+enum Role {
+  FRONTEND
+  BACKEND
+  FULLSTACK
+  DEVOPS
+  DATA_SCIENCE
+  MOBILE
+  OTHER
+}
+
+enum ProficiencyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum AssignmentStatus {
+  NOT_STARTED
+  PENDING
+  UNDER_REVIEW
+  REVIEWED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum SubmissionFileType {
+  ZIP
+  PDF
+  GITHUB
+  OTHER
+}
+
+enum ReviewStatus {
+  DRAFT
+  SUBMITTED
+}
+
+enum ReviewRecommendation {
+  HIRE
+  MAYBE
+  REJECT
+}
+
+enum EngineerAssignmentStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
