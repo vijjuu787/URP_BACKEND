@@ -168,7 +168,12 @@ router.post("/signin/engineer", async (req, res) => {
 // GET /me - Get current authenticated user data
 router.get("/me", requireAuth, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+    console.log("[/me] User ID from token:", userId);
+
+    if (!userId) {
+      return res.status(400).json({ error: "No user ID in token" });
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -190,8 +195,8 @@ router.get("/me", requireAuth, async (req, res) => {
       user,
     });
   } catch (err) {
-    console.error("Error fetching user:", err.message);
-    res.status(500).json({ error: err.message });
+    console.error("[/me] Error:", err);
+    res.status(500).json({ error: err.message || "Internal Server Error" });
   }
 });
 

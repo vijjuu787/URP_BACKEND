@@ -9,7 +9,7 @@ router.get("/", async (req, res) => {
   try {
     const result = await prisma.jobPosting.findMany({
       include: {
-        assignments: {
+        assignment: {
           select: {
             id: true,
             title: true,
