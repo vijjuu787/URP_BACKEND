@@ -5,6 +5,7 @@ const prisma = require("../prisma/index.js").prisma;
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const signToken = require("../utils/jwt.js");
+const requireAuth = require("../middleware/AuthMiddleware.js");
 
 router.post("/signup", async (req, res) => {
   try {
@@ -165,8 +166,6 @@ router.post("/signin/engineer", async (req, res) => {
 });
 
 // GET /me - Get current authenticated user data
-const requireAuth = require("../middleware/AuthMiddleware.js");
-
 router.get("/me", requireAuth, async (req, res) => {
   try {
     const userId = req.user.id;

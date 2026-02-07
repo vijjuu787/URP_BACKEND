@@ -4,8 +4,8 @@ const pool = require("../db");
 const { prisma } = require("../prisma/index.js");
 const requireAuth = require("../middleware/AuthMiddleware.js");
 
-// GET all assignment submissions for a specific candidate ID (path param)
-router.get("/candidate/:candidateId", requireAuth, async (req, res) => {
+// GET all assignment submissions for a specific candidate ID (PUBLIC)
+router.get("/candidate/:candidateId", async (req, res) => {
   try {
     const { candidateId } = req.params;
 

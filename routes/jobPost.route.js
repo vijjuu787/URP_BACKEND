@@ -4,13 +4,25 @@ const pool = require("../db");
 const { prisma } = require("../prisma/index.js");
 const requireAuth = require("../middleware/AuthMiddleware.js");
 
-router.get("/", requireAuth, async (req, res) => {
+// GET all job postings (PUBLIC - no auth required)
+router.get("/", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM job_postings");
-    res.json(result.rows);
+    const result = await prisma.jobPosting.findMany({
+      include: {
+        assignments: {
+          select: {
+            id: true,
+            title: true,
+            difficulty: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    res.json(result);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Database error" });
+    console.error("Error fetching job postings:", err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
