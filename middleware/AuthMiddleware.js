@@ -5,7 +5,9 @@ function requireAuth(req, res, next) {
   const token = req.cookies.token;
 
   if (!token) {
-    return res.status(401).json({ error: "No authentication token found. Please log in." });
+    return res
+      .status(401)
+      .json({ error: "No authentication token found. Please log in." });
   }
 
   console.log("TOKEN FROM COOKIE:", token.substring(0, 20) + "...");
