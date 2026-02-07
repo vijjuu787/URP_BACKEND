@@ -127,9 +127,10 @@ router.post("/", requireAuth, async (req, res) => {
         totalPoints,
         downloadAssets: downloadAssetsBuffer || Buffer.from(""),
         timeLimitHours,
-        job: {
-          connect: { id: jobId },
-        },
+        jobId, // This is all we need - the foreign key to connect to the job
+      },
+      include: {
+        job: true, // Include job details in response
       },
     });
 

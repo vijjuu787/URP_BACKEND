@@ -3,11 +3,56 @@ const router = express.Router();
 const { prisma } = require("../prisma/index.js");
 const requireAuth = require("../middleware/AuthMiddleware.js");
 
-// GET user profile
+// GET current user's profile (authenticated)
 router.get("/", requireAuth, async (req, res) => {
   try {
-    console.log("Authenticated user ID:", req.user.id);
     const userId = req.user.id;
+
+    console.log("Fetching profile for authenticated user:", userId);
+
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId },
+      include: {
+        experiences: {
+          orderBy: { createdAt: "desc" },
+        },
+        educations: {
+          orderBy: { createdAt: "desc" },
+        },
+        skills: true,
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+    });
+
+    if (!profile) {
+      return res.status(404).json({
+        error: "Profile not found for authenticated user",
+      });
+    }
+
+    res.json({
+      message: "Profile retrieved successfully",
+      data: profile,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET user profile by userId (public endpoint for viewing any profile)
+router.get("/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    console.log("Fetching profile for user:", userId);
 
     const profile = await prisma.userProfile.findUnique({
       where: { userId },
@@ -96,54 +141,7 @@ router.get("/candidate/:candidateId", async (req, res) => {
   }
 });
 
-// GET profile by userId (for viewing other users' profiles)
-router.get("/view/:userId", async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    // Validate userId is provided
-    if (!userId) {
-      return res.status(400).json({
-        error: "userId is required",
-      });
-    }
-
-    const profile = await prisma.userProfile.findUnique({
-      where: { userId },
-      include: {
-        experiences: {
-          orderBy: { createdAt: "desc" },
-        },
-        educations: {
-          orderBy: { createdAt: "desc" },
-        },
-        skills: true,
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            role: true,
-          },
-        },
-      },
-    });
-
-    if (!profile) {
-      return res.status(404).json({
-        error: "Profile not found for this user",
-      });
-    }
-
-    res.json({
-      message: "Profile retrieved successfully",
-      data: profile,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
+// CREATE/UPDATE user profile
 router.post("/", requireAuth, async (req, res) => {
   try {
     const userId = req.user.id;
