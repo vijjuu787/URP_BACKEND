@@ -29,13 +29,26 @@ router.post("/signup", async (req, res) => {
 
     const token = signToken(user);
 
+    // Set JWT in HTTP-only cookie
+    const isProduction = process.env.NODE_ENV === "production";
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: isProduction, // Only send over HTTPS in production
+      sameSite: "none", // Allow cross-site cookie inclusion
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+    });
+
     res.json({
       message: "Signup successful",
-      token,
-      user,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+      },
     });
   } catch (err) {
-    console.log("signToken:", signToken);
+    console.log("Signup error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -43,24 +56,10 @@ router.post("/signup", async (req, res) => {
 router.post("/signin", async (req, res) => {
   try {
     const { email, password } = req.body;
-    const authToken = req.headers.authorization?.split(" ")[1]; // Extract Bearer token from header
-    console.log("AUTH TOKEN RECEIVED:", authToken);
-    console.log("email:", email);
-    console.log("password:", password);
-    // If token is provided, verify it
-    if (authToken) {
-      try {
-        const decoded = jwt.verify(authToken, process.env.JWT_SECRET);
-        console.log("Token verified for user:", decoded.email);
-      } catch (tokenError) {
-        console.log("Token verification failed:", tokenError.message);
-        return res.status(401).json({ error: "Invalid or expired token" });
-      }
-    }
 
     // Verify credentials
     const user = await prisma.user.findUnique({ where: { email } });
-    console.log("User found:", user);
+    console.log("User found:", user ? user.email : "Not found");
 
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials" });
@@ -75,10 +74,18 @@ router.post("/signin", async (req, res) => {
     // Generate new token
     const token = signToken(user);
 
-    // Return response with new token and user data
+    // Set JWT in HTTP-only cookie
+    const isProduction = process.env.NODE_ENV === "production";
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: isProduction, // Only send over HTTPS in production
+      sameSite: "none", // Allow cross-site cookie inclusion
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+    });
+
+    // Return response with user data (token NOT included in response body anymore)
     res.json({
       message: "Login successful",
-      token,
       user: {
         id: user.id,
         email: user.email,
@@ -87,31 +94,19 @@ router.post("/signin", async (req, res) => {
       },
     });
   } catch (err) {
+    console.error("Signin error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
+
 router.post("/signin/admin", async (req, res) => {
   try {
     const { email, password } = req.body;
-    const authToken = req.headers.authorization?.split(" ")[1]; // Extract Bearer token from header
-    console.log("AUTH TOKEN RECEIVED:", authToken);
-    console.log("email:", email);
-    console.log("password:", password);
-    // If token is provided, verify it
-    if (authToken) {
-      try {
-        const decoded = jwt.verify(authToken, process.env.JWT_SECRET);
-        console.log("Token verified for user:", decoded.email);
-      } catch (tokenError) {
-        console.log("Token verification failed:", tokenError.message);
-        return res.status(401).json({ error: "Invalid or expired token" });
-      }
-    }
 
     // Verify credentials
     const user = await prisma.user.findUnique({ where: { email } });
-    console.log("User found:", user);
+    console.log("Admin user found:", user ? user.email : "Not found");
 
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials" });
@@ -126,10 +121,18 @@ router.post("/signin/admin", async (req, res) => {
     // Generate new token
     const token = signToken(user);
 
-    // Return response with new token and user data
+    // Set JWT in HTTP-only cookie
+    const isProduction = process.env.NODE_ENV === "production";
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "none",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    // Return response with user data
     res.json({
-      message: "Login successful",
-      token,
+      message: "Admin login successful",
       user: {
         id: user.id,
         email: user.email,
@@ -138,6 +141,7 @@ router.post("/signin/admin", async (req, res) => {
       },
     });
   } catch (err) {
+    console.error("Admin signin error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -159,6 +163,51 @@ router.post("/signin/engineer", async (req, res) => {
   const token = signToken(user);
 
   res.json({ message: "Engineer login success", token });
+});
+
+// GET /me - Get current authenticated user data
+const requireAuth = require("../middleware/AuthMiddleware.js");
+
+router.get("/me", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({
+      message: "User data retrieved",
+      user,
+    });
+  } catch (err) {
+    console.error("Error fetching user:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /logout - Clear the auth cookie
+router.post("/logout", (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "none",
+  });
+
+  res.json({
+    message: "Logout successful",
+  });
 });
 
 module.exports = router;

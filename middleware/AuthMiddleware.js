@@ -1,17 +1,15 @@
 const jwt = require("jsonwebtoken");
 
 function requireAuth(req, res, next) {
-  const header = req.headers.authorization;
+  // Try to get token from cookies (HTTP-only cookie) - preferred method
+  const token = req.cookies.token;
 
-  if (!header) {
-    return res.status(401).json({ error: "No token" });
+  if (!token) {
+    return res.status(401).json({ error: "No authentication token found. Please log in." });
   }
-  console.log("AUTH HEADER RAW:", header);
 
-  const token = header.split(" ")[1];
-
-  console.log("VERIFY TOKEN:", token);
-  console.log("VERIFY SECRET:", process.env.JWT_SECRET);
+  console.log("TOKEN FROM COOKIE:", token.substring(0, 20) + "...");
+  console.log("VERIFY SECRET:", process.env.JWT_SECRET ? "SET" : "NOT SET");
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -20,7 +18,7 @@ function requireAuth(req, res, next) {
     next();
   } catch (err) {
     console.error("JWT ERROR:", err.message);
-    return res.status(401).json({ error: "Invalid token" });
+    return res.status(401).json({ error: "Invalid or expired token" });
   }
 }
 
