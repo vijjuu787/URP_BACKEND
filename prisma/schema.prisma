@@ -36,6 +36,7 @@ model UserProfile {
   summary            String?
   location           String?
   phone              String?
+  profileImage       String?         // User profile picture URL
   linkedinUrl        String?         // LinkedIn profile URL
   githubUrl          String?         // GitHub profile URL
   portfolioUrl       String?         // Portfolio website URL

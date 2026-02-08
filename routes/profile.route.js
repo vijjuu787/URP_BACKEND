@@ -2,6 +2,73 @@ const express = require("express");
 const router = express.Router();
 const { prisma } = require("../prisma/index.js");
 const requireAuth = require("../middleware/AuthMiddleware.js");
+const upload = require("../middleware/uploadMiddleware.js");
+
+// POST /api/profile/upload-picture - Upload profile picture
+router.post(
+  "/upload-picture",
+  requireAuth,
+  upload.single("profileImage"),
+  async (req, res) => {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(400).json({ error: "No user ID in token" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      // Generate file URL path
+      const fileUrl = `/uploads/${req.file.filename}`;
+
+      // Ensure profile exists
+      let profile = await prisma.userProfile.findUnique({
+        where: { userId },
+      });
+
+      if (!profile) {
+        profile = await prisma.userProfile.create({
+          data: { userId },
+        });
+      }
+
+      // Update profile with image URL
+      const updatedProfile = await prisma.userProfile.update({
+        where: { userId },
+        data: {
+          profileImage: fileUrl,
+        },
+        include: {
+          experiences: {
+            orderBy: { createdAt: "desc" },
+          },
+          educations: {
+            orderBy: { createdAt: "desc" },
+          },
+          skills: true,
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              role: true,
+            },
+          },
+        },
+      });
+
+      res.json({
+        message: "Profile picture uploaded successfully",
+        data: updatedProfile,
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  },
+);
 
 // GET current user's profile (authenticated)
 router.get("/", requireAuth, async (req, res) => {
