@@ -110,6 +110,9 @@ router.get("/me", requireAuth, async (req, res) => {
         email: true,
         fullName: true,
         role: true,
+        resumeUrl: true,
+        resumeFileName: true,
+        resumeUploadedAt: true,
         createdAt: true,
       },
     });
@@ -141,48 +144,53 @@ router.post("/logout", (req, res) => {
 });
 
 // POST /upload-resume - Upload resume file
-router.post("/upload-resume", requireAuth, uploadResume.single("resume"), async (req, res) => {
-  try {
-    const userId = req.user?.id;
+router.post(
+  "/upload-resume",
+  requireAuth,
+  uploadResume.single("resume"),
+  async (req, res) => {
+    try {
+      const userId = req.user?.id;
 
-    if (!userId) {
-      return res.status(400).json({ error: "No user ID in token" });
-    }
+      if (!userId) {
+        return res.status(400).json({ error: "No user ID in token" });
+      }
 
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
 
-    // Generate file URL path
-    const resumeUrl = `/uploads/resumes/${req.file.filename}`;
+      // Generate file URL path
+      const resumeUrl = `/uploads/resumes/${req.file.filename}`;
 
-    // Update user with resume URL
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: {
+      // Update user with resume URL
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          resumeUrl: resumeUrl,
+          resumeFileName: req.file.originalname,
+          resumeUploadedAt: new Date(),
+        },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          role: true,
+          resumeUrl: true,
+          resumeFileName: true,
+          resumeUploadedAt: true,
+        },
+      });
+
+      res.json({
+        message: "Resume uploaded successfully",
         resumeUrl: resumeUrl,
-        resumeFileName: req.file.originalname,
-        resumeUploadedAt: new Date(),
-      },
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        role: true,
-        resumeUrl: true,
-        resumeFileName: true,
-        resumeUploadedAt: true,
-      },
-    });
-
-    res.json({
-      message: "Resume uploaded successfully",
-      resumeUrl: resumeUrl,
-      user: updatedUser,
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+        user: updatedUser,
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  },
+);
 
 module.exports = router;
