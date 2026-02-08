@@ -35,7 +35,7 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Create multer instance
+// Create multer instance with error handling
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
@@ -44,4 +44,18 @@ const upload = multer({
   },
 });
 
+// Error handling middleware for multer
+const handleMulterError = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({ error: "File size exceeds 5MB limit" });
+    }
+    return res.status(400).json({ error: err.message });
+  } else if (err) {
+    return res.status(400).json({ error: err.message });
+  }
+  next();
+};
+
 module.exports = upload;
+module.exports.handleMulterError = handleMulterError;
