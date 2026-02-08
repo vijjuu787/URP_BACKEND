@@ -3,59 +3,53 @@ const router = express.Router();
 const { prisma } = require("../prisma/index.js");
 const requireAuth = require("../middleware/AuthMiddleware.js");
 
-// GET current user's profile (authenticated) OR public profile
-router.get("/", async (req, res) => {
+// GET current user's profile (authenticated)
+router.get("/", requireAuth, async (req, res) => {
   try {
-    // Check if user is authenticated
-    const token = req.cookies.token;
-    
-    if (token) {
-      // Authenticated request - get own profile
-      const userId = req.user?.id;
-      
-      if (!userId) {
-        return res.status(401).json({ error: "Invalid authentication" });
-      }
+    const userId = req.user?.id;
 
-      console.log("Fetching profile for authenticated user:", userId);
+    if (!userId) {
+      return res.status(400).json({
+        error: "No user ID in authentication token",
+      });
+    }
 
-      const profile = await prisma.userProfile.findUnique({
-        where: { userId },
-        include: {
-          experiences: {
-            orderBy: { createdAt: "desc" },
-          },
-          educations: {
-            orderBy: { createdAt: "desc" },
-          },
-          skills: true,
-          user: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true,
-              role: true,
-            },
+    console.log("Fetching profile for authenticated user:", userId);
+
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId },
+      include: {
+        experiences: {
+          orderBy: { createdAt: "desc" },
+        },
+        educations: {
+          orderBy: { createdAt: "desc" },
+        },
+        skills: true,
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            role: true,
           },
         },
-      });
+      },
+    });
 
-      if (!profile) {
-        return res.status(404).json({
-          error: "Profile not found for authenticated user",
-        });
-      }
-
-      return res.json({
-        message: "Profile retrieved successfully",
-        data: profile,
+    if (!profile) {
+      return res.status(404).json({
+        error: "Profile not found for authenticated user",
       });
-    } else {
-      // Not authenticated - return error
-      return res.status(401).json({ error: "Authentication required. Please log in." });
     }
+
+    res.json({
+      message: "Profile retrieved successfully",
+      data: profile,
+    });
   } catch (err) {
-    console.error("Error in GET /:", err);
+    console.error("Error in GET /profile:", err);
+    res.status(500).json({ error: err.message || "Internal Server Error" });
     res.status(500).json({ error: err.message });
   }
 });

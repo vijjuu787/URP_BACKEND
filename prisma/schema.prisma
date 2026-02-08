@@ -17,6 +17,8 @@ model User {
   resumeUploadedAt      DateTime               @default(now())
   role                  UserRole               @default(candidate)
   isActive              Boolean                @default(true)
+  accessToken           String?                // Store JWT token in database
+  accessTokenExpiresAt  DateTime?              // Token expiration time
   createdAt             DateTime               @default(now())
   assignmentStarts      AssignmentStart[]
   assignmentReviews     AssignmentReview[]

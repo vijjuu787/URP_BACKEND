@@ -1,0 +1,15 @@
+
+> benkend@1.0.0 dev
+> nodemon server.js
+
+[33m[nodemon] 3.1.11[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.2.3] injecting env (8) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+✓ Server is running on port 5100
+✓ CORS enabled for:
+  - http://localhost:5173 (local)
+  - https://urp-frontend-inin.vercel.app (production)
+[32m[nodemon] clean exit - waiting for changes before restart[39m
