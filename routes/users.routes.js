@@ -143,6 +143,45 @@ router.post("/logout", (req, res) => {
   });
 });
 
+// GET /resume/:userId - Get resume of a specific user
+router.get("/resume/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        resumeUrl: true,
+        resumeFileName: true,
+        resumeUploadedAt: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (!user.resumeUrl) {
+      return res.status(404).json({ error: "No resume found for this user" });
+    }
+
+    res.json({
+      message: "Resume retrieved successfully",
+      resume: {
+        userId: user.id,
+        fileName: user.resumeFileName,
+        resumeUrl: user.resumeUrl,
+        uploadedAt: user.resumeUploadedAt,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /upload-resume - Upload resume file
 router.post(
   "/upload-resume",
