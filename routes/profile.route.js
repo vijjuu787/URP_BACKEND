@@ -439,6 +439,49 @@ router.post("/experience", requireAuth, async (req, res) => {
   }
 });
 
+// UPDATE experience
+router.patch("/experience/:experienceId", requireAuth, async (req, res) => {
+  try {
+    const { experienceId } = req.params;
+    const userId = req.user.id;
+    const { company, role, location, startDate, endDate, description } =
+      req.body;
+
+    // Verify experience belongs to user
+    const experience = await prisma.experience.findUnique({
+      where: { id: experienceId },
+      include: { profile: true },
+    });
+
+    if (!experience || experience.profile.userId !== userId) {
+      return res.status(403).json({
+        error: "Not authorized to update this experience",
+      });
+    }
+
+    const updatedExperience = await prisma.experience.update({
+      where: { id: experienceId },
+      data: {
+        company: company || experience.company,
+        role: role || experience.role,
+        location: location !== undefined ? location : experience.location,
+        startDate: startDate !== undefined ? startDate : experience.startDate,
+        endDate: endDate !== undefined ? endDate : experience.endDate,
+        description:
+          description !== undefined ? description : experience.description,
+      },
+    });
+
+    res.json({
+      message: "Experience updated successfully",
+      data: updatedExperience,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // DELETE experience
 router.delete("/experience/:experienceId", requireAuth, async (req, res) => {
   try {
@@ -500,6 +543,46 @@ router.post("/education", requireAuth, async (req, res) => {
     res.status(201).json({
       message: "Education added successfully",
       data: education,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// UPDATE education
+router.patch("/education/:educationId", requireAuth, async (req, res) => {
+  try {
+    const { educationId } = req.params;
+    const userId = req.user.id;
+    const { degree, institution, location, graduationYear } = req.body;
+
+    // Verify education belongs to user
+    const education = await prisma.education.findUnique({
+      where: { id: educationId },
+      include: { profile: true },
+    });
+
+    if (!education || education.profile.userId !== userId) {
+      return res.status(403).json({
+        error: "Not authorized to update this education",
+      });
+    }
+
+    const updatedEducation = await prisma.education.update({
+      where: { id: educationId },
+      data: {
+        degree: degree || education.degree,
+        institution: institution || education.institution,
+        location: location !== undefined ? location : education.location,
+        graduationYear:
+          graduationYear !== undefined ? graduationYear : education.graduationYear,
+      },
+    });
+
+    res.json({
+      message: "Education updated successfully",
+      data: updatedEducation,
     });
   } catch (err) {
     console.error(err);
