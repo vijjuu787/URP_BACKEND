@@ -157,6 +157,9 @@ router.post("/", requireAuth, async (req, res) => {
       summary,
       location,
       phone,
+      linkedinUrl,
+      githubUrl,
+      portfolioUrl,
       experiences,
       educations,
       skills,
@@ -170,6 +173,9 @@ router.post("/", requireAuth, async (req, res) => {
         summary,
         location,
         phone,
+        linkedinUrl,
+        githubUrl,
+        portfolioUrl,
         updatedAt: new Date(),
       },
       create: {
@@ -178,6 +184,9 @@ router.post("/", requireAuth, async (req, res) => {
         summary,
         location,
         phone,
+        linkedinUrl,
+        githubUrl,
+        portfolioUrl,
       },
       include: {
         experiences: true,
@@ -497,6 +506,207 @@ router.post("/skills", requireAuth, async (req, res) => {
     res.status(201).json({
       message: "Skills updated successfully",
       data: skills,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// UPDATE LinkedIn URL
+router.patch("/social/linkedin", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { linkedinUrl } = req.body;
+
+    if (!linkedinUrl) {
+      return res.status(400).json({ error: "LinkedIn URL is required" });
+    }
+
+    // Validate URL
+    try {
+      new URL(linkedinUrl);
+    } catch {
+      return res.status(400).json({ error: "Invalid LinkedIn URL" });
+    }
+
+    // Ensure profile exists
+    let profile = await prisma.userProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!profile) {
+      profile = await prisma.userProfile.create({
+        data: { userId },
+      });
+    }
+
+    const updatedProfile = await prisma.userProfile.update({
+      where: { userId },
+      data: { linkedinUrl },
+      select: {
+        id: true,
+        linkedinUrl: true,
+        githubUrl: true,
+        portfolioUrl: true,
+      },
+    });
+
+    res.json({
+      message: "LinkedIn URL updated successfully",
+      data: updatedProfile,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// UPDATE GitHub URL
+router.patch("/social/github", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { githubUrl } = req.body;
+
+    if (!githubUrl) {
+      return res.status(400).json({ error: "GitHub URL is required" });
+    }
+
+    // Validate URL
+    try {
+      new URL(githubUrl);
+    } catch {
+      return res.status(400).json({ error: "Invalid GitHub URL" });
+    }
+
+    // Ensure profile exists
+    let profile = await prisma.userProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!profile) {
+      profile = await prisma.userProfile.create({
+        data: { userId },
+      });
+    }
+
+    const updatedProfile = await prisma.userProfile.update({
+      where: { userId },
+      data: { githubUrl },
+      select: {
+        id: true,
+        linkedinUrl: true,
+        githubUrl: true,
+        portfolioUrl: true,
+      },
+    });
+
+    res.json({
+      message: "GitHub URL updated successfully",
+      data: updatedProfile,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// UPDATE Portfolio URL
+router.patch("/social/portfolio", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { portfolioUrl } = req.body;
+
+    if (!portfolioUrl) {
+      return res.status(400).json({ error: "Portfolio URL is required" });
+    }
+
+    // Validate URL
+    try {
+      new URL(portfolioUrl);
+    } catch {
+      return res.status(400).json({ error: "Invalid Portfolio URL" });
+    }
+
+    // Ensure profile exists
+    let profile = await prisma.userProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!profile) {
+      profile = await prisma.userProfile.create({
+        data: { userId },
+      });
+    }
+
+    const updatedProfile = await prisma.userProfile.update({
+      where: { userId },
+      data: { portfolioUrl },
+      select: {
+        id: true,
+        linkedinUrl: true,
+        githubUrl: true,
+        portfolioUrl: true,
+      },
+    });
+
+    res.json({
+      message: "Portfolio URL updated successfully",
+      data: updatedProfile,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE social link
+router.delete("/social/:type", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { type } = req.params;
+
+    const validTypes = ["linkedin", "github", "portfolio"];
+    if (!validTypes.includes(type.toLowerCase())) {
+      return res.status(400).json({
+        error: "Invalid type. Must be: linkedin, github, or portfolio",
+      });
+    }
+
+    const fieldMap = {
+      linkedin: "linkedinUrl",
+      github: "githubUrl",
+      portfolio: "portfolioUrl",
+    };
+
+    // Ensure profile exists
+    let profile = await prisma.userProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!profile) {
+      profile = await prisma.userProfile.create({
+        data: { userId },
+      });
+    }
+
+    const updateData = {};
+    updateData[fieldMap[type.toLowerCase()]] = null;
+
+    const updatedProfile = await prisma.userProfile.update({
+      where: { userId },
+      data: updateData,
+      select: {
+        id: true,
+        linkedinUrl: true,
+        githubUrl: true,
+        portfolioUrl: true,
+      },
+    });
+
+    res.json({
+      message: `${type} link deleted successfully`,
+      data: updatedProfile,
     });
   } catch (err) {
     console.error(err);

@@ -36,6 +36,9 @@ model UserProfile {
   summary            String?
   location           String?
   phone              String?
+  linkedinUrl        String?         // LinkedIn profile URL
+  githubUrl          String?         // GitHub profile URL
+  portfolioUrl       String?         // Portfolio website URL
   experiences        Experience[]
   educations         Education[]
   skills             ProfileSkills?
