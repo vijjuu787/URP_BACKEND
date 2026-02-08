@@ -576,7 +576,9 @@ router.patch("/education/:educationId", requireAuth, async (req, res) => {
         institution: institution || education.institution,
         location: location !== undefined ? location : education.location,
         graduationYear:
-          graduationYear !== undefined ? graduationYear : education.graduationYear,
+          graduationYear !== undefined
+            ? graduationYear
+            : education.graduationYear,
       },
     });
 
