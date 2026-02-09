@@ -34,13 +34,14 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
-// GET all jobIDs the authenticated user has applied for (by starting assignments)
+// GET all jobIDs the authenticated user (candidate) has applied for
+// User applies for a job by starting the assignment for that job
 router.get("/applied-jobs/all", requireAuth, async (req, res) => {
   try {
-    const candidateId = req.user.id;
+    const candidateId = req.user.id; // Authenticated user = candidate
 
-    // Get all unique jobIds for assignments started by this user
-    const appliedJobs = await prisma.assignmentStart.findMany({
+    // Get all jobs this user/candidate has applied for (by starting assignments)
+    const userApplications = await prisma.assignmentStart.findMany({
       where: { candidateId },
       select: {
         jobId: true,
@@ -69,15 +70,18 @@ router.get("/applied-jobs/all", requireAuth, async (req, res) => {
       orderBy: { startedAt: "desc" }, // Most recent first
     });
 
-    // Get unique job IDs
-    const jobIds = [...new Set(appliedJobs.map(a => a.jobId))];
+    // Extract unique job IDs that this user has applied for
+    const appliedJobIds = [
+      ...new Set(userApplications.map((app) => app.jobId)),
+    ];
 
     res.json({
-      message: "Applied jobs retrieved successfully",
-      totalJobsAppliedFor: jobIds.length,
+      message: "User applications retrieved successfully",
+      userId: candidateId,
+      totalJobsAppliedFor: appliedJobIds.length,
       data: {
-        jobIds: jobIds,
-        applications: appliedJobs,
+        appliedJobIds: appliedJobIds,
+        userApplications: userApplications,
       },
     });
   } catch (err) {
