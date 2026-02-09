@@ -34,6 +34,58 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
+// GET all jobIDs the authenticated user has applied for (by starting assignments)
+router.get("/applied-jobs/all", requireAuth, async (req, res) => {
+  try {
+    const candidateId = req.user.id;
+
+    // Get all unique jobIds for assignments started by this user
+    const appliedJobs = await prisma.assignmentStart.findMany({
+      where: { candidateId },
+      select: {
+        jobId: true,
+        startedAt: true,
+        job: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            roleType: true,
+            difficulty: true,
+            points: true,
+            status: true,
+            createdAt: true,
+          },
+        },
+        assignment: {
+          select: {
+            id: true,
+            title: true,
+            difficulty: true,
+            timeLimitHours: true,
+          },
+        },
+      },
+      orderBy: { startedAt: "desc" }, // Most recent first
+    });
+
+    // Get unique job IDs
+    const jobIds = [...new Set(appliedJobs.map(a => a.jobId))];
+
+    res.json({
+      message: "Applied jobs retrieved successfully",
+      totalJobsAppliedFor: jobIds.length,
+      data: {
+        jobIds: jobIds,
+        applications: appliedJobs,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET all assignments for a specific candidate ID (can be used by admins)
 router.get("/candidate/:candidateId", requireAuth, async (req, res) => {
   try {
