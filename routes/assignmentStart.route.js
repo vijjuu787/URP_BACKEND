@@ -112,6 +112,276 @@ router.get("/candidate/:candidateId", requireAuth, async (req, res) => {
   }
 });
 
+// GET assignment timing information (elapsed time, remaining time, etc.)
+// Must be BEFORE /:id route to match properly
+router.get("/timing/:assignmentStartId", requireAuth, async (req, res) => {
+  try {
+    const { assignmentStartId } = req.params;
+    const candidateId = req.user?.id;
+
+    if (!candidateId) {
+      return res.status(400).json({ error: "No user ID in token" });
+    }
+
+    // Get the assignment start record
+    const assignmentStart = await prisma.assignmentStart.findFirst({
+      where: {
+        id: assignmentStartId,
+        candidateId, // Ensure user can only view their own timing
+      },
+      include: {
+        assignment: {
+          select: {
+            id: true,
+            title: true,
+            timeLimitHours: true,
+            totalPoints: true,
+          },
+        },
+      },
+    });
+
+    if (!assignmentStart) {
+      return res.status(404).json({
+        error: "Assignment start record not found",
+      });
+    }
+
+    const now = new Date();
+    const startedAt = new Date(assignmentStart.startedAt);
+
+    // Calculate timing
+    const elapsedMilliseconds = now - startedAt;
+    const elapsedMinutes = Math.floor(elapsedMilliseconds / (1000 * 60));
+    const elapsedHours = Math.floor(elapsedMinutes / 60);
+
+    const totalTimeAllowedMinutes =
+      assignmentStart.assignment.timeLimitHours * 60;
+    const remainingMinutes = totalTimeAllowedMinutes - elapsedMinutes;
+    const remainingHours = Math.floor(remainingMinutes / 60);
+    const remainingMilliseconds = Math.max(0, remainingMinutes * 60 * 1000);
+
+    const isTimeExpired = remainingMinutes <= 0;
+    const percentageTimeUsed = Math.floor(
+      (elapsedMinutes / totalTimeAllowedMinutes) * 100,
+    );
+
+    res.json({
+      message: "Assignment timing retrieved successfully",
+      data: {
+        assignmentStartId,
+        assignmentId: assignmentStart.assignment.id,
+        assignmentTitle: assignmentStart.assignment.title,
+        startedAt: assignmentStart.startedAt,
+        now: now,
+        timing: {
+          totalTimeAllowedHours: assignmentStart.assignment.timeLimitHours,
+          totalTimeAllowedMinutes: totalTimeAllowedMinutes,
+          elapsedMinutes: elapsedMinutes,
+          elapsedHours: elapsedHours,
+          elapsedSeconds: Math.floor((elapsedMilliseconds / 1000) % 60),
+          remainingMinutes: Math.max(0, remainingMinutes),
+          remainingHours: Math.max(0, remainingHours),
+          remainingSeconds: Math.max(
+            0,
+            Math.floor((remainingMilliseconds / 1000) % 60),
+          ),
+          percentageTimeUsed: Math.min(100, percentageTimeUsed),
+          isTimeExpired: isTimeExpired,
+        },
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET all assignment timings for authenticated user (useful for dashboard)
+router.get("/timings/all/current", requireAuth, async (req, res) => {
+  try {
+    const candidateId = req.user?.id;
+
+    if (!candidateId) {
+      return res.status(400).json({ error: "No user ID in token" });
+    }
+
+    const now = new Date();
+
+    // Get all active assignment starts for this user
+    const assignmentStarts = await prisma.assignmentStart.findMany({
+      where: { candidateId },
+      include: {
+        assignment: {
+          select: {
+            id: true,
+            title: true,
+            timeLimitHours: true,
+            totalPoints: true,
+            difficulty: true,
+          },
+        },
+      },
+      orderBy: { startedAt: "desc" },
+    });
+
+    // Calculate timing for each assignment
+    const timingData = assignmentStarts.map((start) => {
+      const startedAt = new Date(start.startedAt);
+      const elapsedMilliseconds = now - startedAt;
+      const elapsedMinutes = Math.floor(elapsedMilliseconds / (1000 * 60));
+      const totalTimeAllowedMinutes = start.assignment.timeLimitHours * 60;
+      const remainingMinutes = totalTimeAllowedMinutes - elapsedMinutes;
+      const remainingMilliseconds = Math.max(0, remainingMinutes * 60 * 1000);
+
+      return {
+        assignmentStartId: start.id,
+        assignmentId: start.assignment.id,
+        assignmentTitle: start.assignment.title,
+        assignmentDifficulty: start.assignment.difficulty,
+        assignmentPoints: start.assignment.totalPoints,
+        startedAt: start.startedAt,
+        timing: {
+          totalTimeAllowedHours: start.assignment.timeLimitHours,
+          totalTimeAllowedMinutes: totalTimeAllowedMinutes,
+          elapsedMinutes: elapsedMinutes,
+          remainingMinutes: Math.max(0, remainingMinutes),
+          percentageTimeUsed: Math.min(
+            100,
+            Math.floor((elapsedMinutes / totalTimeAllowedMinutes) * 100),
+          ),
+          isTimeExpired: remainingMinutes <= 0,
+        },
+      };
+    });
+
+    res.json({
+      message: "All assignment timings retrieved successfully",
+      count: timingData.length,
+      data: timingData,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET assignmentStart ID through jobID
+// Must be BEFORE /job/:jobId and /:id routes to match properly
+router.get("/from-job/:jobId", requireAuth, async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const candidateId = req.user?.id;
+
+    if (!candidateId) {
+      return res.status(400).json({ error: "No user ID in token" });
+    }
+
+    // Get the assignment start record for this job and candidate
+    const assignmentStart = await prisma.assignmentStart.findFirst({
+      where: {
+        jobId,
+        candidateId, // Ensure user can only view their own records
+      },
+      select: {
+        id: true,
+        jobId: true,
+        assignmentId: true,
+        candidateId: true,
+        startedAt: true,
+        completedAt: true,
+        assignment: {
+          select: {
+            id: true,
+            title: true,
+            difficulty: true,
+            totalPoints: true,
+            timeLimitHours: true,
+          },
+        },
+      },
+    });
+
+    if (!assignmentStart) {
+      return res.status(404).json({
+        error: "No assignment start found for this job",
+      });
+    }
+
+    res.json({
+      message: "Assignment start ID retrieved successfully",
+      data: assignmentStart,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET jobID and job details from assignmentStartID
+router.get("/job/:assignmentStartId", requireAuth, async (req, res) => {
+  try {
+    const { assignmentStartId } = req.params;
+    const candidateId = req.user?.id;
+
+    if (!candidateId) {
+      return res.status(400).json({ error: "No user ID in token" });
+    }
+
+    // Get the assignment start record with job details
+    const assignmentStart = await prisma.assignmentStart.findFirst({
+      where: {
+        id: assignmentStartId,
+        candidateId, // Ensure user can only view their own records
+      },
+      include: {
+        job: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            workType: true,
+            roleType: true,
+            requirements: true,
+            difficulty: true,
+            points: true,
+            status: true,
+            createdAt: true,
+          },
+        },
+        assignment: {
+          select: {
+            id: true,
+            title: true,
+            difficulty: true,
+            totalPoints: true,
+            timeLimitHours: true,
+          },
+        },
+      },
+    });
+
+    if (!assignmentStart) {
+      return res.status(404).json({
+        error: "Assignment start record not found",
+      });
+    }
+
+    res.json({
+      message: "Job details retrieved successfully",
+      data: {
+        assignmentStartId,
+        jobId: assignmentStart.jobId,
+        job: assignmentStart.job,
+        assignment: assignmentStart.assignment,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST - Start an assignment (create AssignmentStart record)
 router.post("/", requireAuth, async (req, res) => {
   try {
@@ -241,149 +511,6 @@ router.get("/:id", requireAuth, async (req, res) => {
     res.json({
       message: "Assignment start retrieved successfully",
       data: assignmentStart,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET assignment timing information (elapsed time, remaining time, etc.)
-router.get("/timing/:assignmentStartId", requireAuth, async (req, res) => {
-  try {
-    const { assignmentStartId } = req.params;
-    const candidateId = req.user.id;
-
-    // Get the assignment start record
-    const assignmentStart = await prisma.assignmentStart.findFirst({
-      where: {
-        id: assignmentStartId,
-        candidateId, // Ensure user can only view their own timing
-      },
-      include: {
-        assignment: {
-          select: {
-            id: true,
-            title: true,
-            timeLimitHours: true,
-            totalPoints: true,
-          },
-        },
-      },
-    });
-
-    if (!assignmentStart) {
-      return res.status(404).json({
-        error: "Assignment start record not found",
-      });
-    }
-
-    const now = new Date();
-    const startedAt = new Date(assignmentStart.startedAt);
-
-    // Calculate timing
-    const elapsedMilliseconds = now - startedAt;
-    const elapsedMinutes = Math.floor(elapsedMilliseconds / (1000 * 60));
-    const elapsedHours = Math.floor(elapsedMinutes / 60);
-
-    const totalTimeAllowedMinutes =
-      assignmentStart.assignment.timeLimitHours * 60;
-    const remainingMinutes = totalTimeAllowedMinutes - elapsedMinutes;
-    const remainingHours = Math.floor(remainingMinutes / 60);
-
-    const isTimeExpired = remainingMinutes <= 0;
-    const percentageTimeUsed = Math.floor(
-      (elapsedMinutes / totalTimeAllowedMinutes) * 100,
-    );
-
-    res.json({
-      message: "Assignment timing retrieved successfully",
-      data: {
-        assignmentStartId,
-        assignmentId: assignmentStart.assignment.id,
-        assignmentTitle: assignmentStart.assignment.title,
-        startedAt: assignmentStart.startedAt,
-        now: now,
-        timing: {
-          totalTimeAllowedHours: assignmentStart.assignment.timeLimitHours,
-          totalTimeAllowedMinutes: totalTimeAllowedMinutes,
-          elapsedMinutes: elapsedMinutes,
-          elapsedHours: elapsedHours,
-          elapsedSeconds: Math.floor((elapsedMilliseconds / 1000) % 60),
-          remainingMinutes: Math.max(0, remainingMinutes),
-          remainingHours: Math.max(0, remainingHours),
-          remainingSeconds: Math.max(
-            0,
-            Math.floor((remainingMilliseconds / 1000) % 60),
-          ),
-          percentageTimeUsed: Math.min(100, percentageTimeUsed),
-          isTimeExpired: isTimeExpired,
-        },
-      },
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET all assignment timings for authenticated user (useful for dashboard)
-router.get("/timings/all/current", requireAuth, async (req, res) => {
-  try {
-    const candidateId = req.user.id;
-    const now = new Date();
-
-    // Get all active assignment starts for this user
-    const assignmentStarts = await prisma.assignmentStart.findMany({
-      where: { candidateId },
-      include: {
-        assignment: {
-          select: {
-            id: true,
-            title: true,
-            timeLimitHours: true,
-            totalPoints: true,
-            difficulty: true,
-          },
-        },
-      },
-      orderBy: { startedAt: "desc" },
-    });
-
-    // Calculate timing for each assignment
-    const timingData = assignmentStarts.map((start) => {
-      const startedAt = new Date(start.startedAt);
-      const elapsedMilliseconds = now - startedAt;
-      const elapsedMinutes = Math.floor(elapsedMilliseconds / (1000 * 60));
-      const totalTimeAllowedMinutes = start.assignment.timeLimitHours * 60;
-      const remainingMinutes = totalTimeAllowedMinutes - elapsedMinutes;
-      const remainingMilliseconds = Math.max(0, remainingMinutes * 60 * 1000);
-
-      return {
-        assignmentStartId: start.id,
-        assignmentId: start.assignment.id,
-        assignmentTitle: start.assignment.title,
-        assignmentDifficulty: start.assignment.difficulty,
-        assignmentPoints: start.assignment.totalPoints,
-        startedAt: start.startedAt,
-        timing: {
-          totalTimeAllowedHours: start.assignment.timeLimitHours,
-          totalTimeAllowedMinutes: totalTimeAllowedMinutes,
-          elapsedMinutes: elapsedMinutes,
-          remainingMinutes: Math.max(0, remainingMinutes),
-          percentageTimeUsed: Math.min(
-            100,
-            Math.floor((elapsedMinutes / totalTimeAllowedMinutes) * 100),
-          ),
-          isTimeExpired: remainingMinutes <= 0,
-        },
-      };
-    });
-
-    res.json({
-      message: "All assignment timings retrieved successfully",
-      count: timingData.length,
-      data: timingData,
     });
   } catch (err) {
     console.error(err);
