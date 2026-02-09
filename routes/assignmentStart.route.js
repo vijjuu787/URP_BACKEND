@@ -289,7 +289,6 @@ router.get("/from-job/:jobId", requireAuth, async (req, res) => {
         assignmentId: true,
         candidateId: true,
         startedAt: true,
-        completedAt: true,
         assignment: {
           select: {
             id: true,
