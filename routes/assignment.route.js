@@ -65,40 +65,29 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// Get assignment by jobId (PUBLIC - no auth required)
+// Get all assignments linked with the same jobId (PUBLIC - no auth required)
 router.get("/job/:jobId", async (req, res) => {
   const { jobId } = req.params;
-  try {
-    console.log(`Fetching assignment for jobId: ${jobId}`);
 
-    const assignment = await prisma.assignment.findUnique({
-      where: { jobId: String(jobId) },
+  try {
+    const assignments = await prisma.assignment.findMany({
+      where: { jobId },
       include: {
-        job: true,
         assignmentStarts: true,
       },
     });
 
-    if (!assignment) {
-      console.log(`No assignment found for jobId: ${jobId}`);
-      return res
-        .status(404)
-        .json({ error: "Assignment not found for this job" });
-    }
-
-    // Return assignment with file download URL
-    res.json({
-      ...assignment,
-      downloadAssetsUrl: assignment.downloadAssetsUrl,
-      downloadAssetsName: assignment.downloadAssetsName,
-      description: assignment.description,
+    return res.status(200).json({
+      message: "Assignments retrieved successfully",
+      jobId,
+      totalAssignments: assignments.length,
+      data: assignments,
     });
   } catch (err) {
-    console.error("Error fetching assignment by jobId:", err.message);
-    console.error(err);
-    res
-      .status(500)
-      .json({ error: err.message || "Failed to fetch assignment" });
+    console.error("Error fetching assignments by jobId:", err);
+    return res.status(500).json({
+      error: "Failed to fetch assignments",
+    });
   }
 });
 

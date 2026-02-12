@@ -125,7 +125,7 @@ model JobPosting {
   postDate         DateTime          @default(now())
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
-  assignment       Assignment?
+  assignemnt       Assignment[]
   assignmentStarts AssignmentStart[]
 
   @@map("job_postings")
@@ -136,7 +136,7 @@ model Assignment {
   title                 String
   overview              String?
   techStack             String[]          @default([])
-  jobId                 String?            @unique
+  jobId                 String?            
   job                   JobPosting?       @relation(fields: [jobId], references: [id], onDelete: Cascade)
   description           String   @db.Text
   difficulty            DifficultyLevel
