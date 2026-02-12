@@ -125,31 +125,36 @@ model JobPosting {
   postDate         DateTime          @default(now())
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
-  assignemnt       Assignment[]
+
+  assignments      Assignment[]      @relation("JobAssignments")  // ✅ many-to-many
+
   assignmentStarts AssignmentStart[]
 
   @@map("job_postings")
 }
+
 
 model Assignment {
   id                    String            @id @default(uuid())
   title                 String
   overview              String?
   techStack             String[]          @default([])
-  jobId                 String?            
-  job                   JobPosting?       @relation(fields: [jobId], references: [id], onDelete: Cascade)
   description           String   @db.Text
   difficulty            DifficultyLevel
   totalPoints           Int
-  downloadAssetsUrl     String?           // Path to ZIP file: /uploads/assignments/filename.zip
-  downloadAssetsName    String?           // Original filename for download
+  downloadAssetsUrl     String?
+  downloadAssetsName    String?
   timeLimitHours        Int
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
+
+  jobs                  JobPosting[]      @relation("JobAssignments")  // ✅ many-to-many
+
   assignmentStarts      AssignmentStart[]
 
   @@map("assignments")
 }
+
 model AssignmentStart {
   id           String     @id @default(uuid())
   jobId        String

@@ -66,22 +66,35 @@ router.get("/:id", async (req, res) => {
 });
 
 // Get all assignments linked with the same jobId (PUBLIC - no auth required)
+// Since Assignment and JobPosting have many-to-many relationship
 router.get("/job/:jobId", async (req, res) => {
   const { jobId } = req.params;
 
   try {
-    const count = await prisma.assignment.count({
-      where: { jobId: "f2dd5283-fe9a-40ef-a14a-3d086ba66c51" },
-    });
+    console.log(`Fetching all assignments for jobId: ${jobId}`);
 
-    console.log(count);
-
-    const assignments = await prisma.assignment.findMany({
-      where: { jobId },
+    // First verify the job exists
+    const job = await prisma.jobPosting.findUnique({
+      where: { id: jobId },
       include: {
-        assignmentStarts: true,
+        assignments: {
+          include: {
+            assignmentStarts: true,
+          },
+        },
       },
     });
+
+    if (!job) {
+      console.log(`No job found with jobId: ${jobId}`);
+      return res.status(404).json({
+        error: "Job posting not found",
+      });
+    }
+
+    // Get all assignments linked to this job
+    const assignments = job.assignments;
+
     console.log(
       `Fetched ${assignments.length} assignments for jobId: ${jobId}`,
     );
@@ -90,7 +103,12 @@ router.get("/job/:jobId", async (req, res) => {
       message: "Assignments retrieved successfully",
       jobId,
       totalAssignments: assignments.length,
-      data: assignments,
+      data: assignments.map((a) => ({
+        ...a,
+        downloadAssetsUrl: a.downloadAssetsUrl,
+        downloadAssetsName: a.downloadAssetsName,
+        description: a.description,
+      })),
     });
   } catch (err) {
     console.error("Error fetching assignments by jobId:", err);
