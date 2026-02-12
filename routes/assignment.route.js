@@ -70,12 +70,21 @@ router.get("/job/:jobId", async (req, res) => {
   const { jobId } = req.params;
 
   try {
+    const count = await prisma.assignment.count({
+      where: { jobId: "f2dd5283-fe9a-40ef-a14a-3d086ba66c51" },
+    });
+
+    console.log(count);
+
     const assignments = await prisma.assignment.findMany({
       where: { jobId },
       include: {
         assignmentStarts: true,
       },
     });
+    console.log(
+      `Fetched ${assignments.length} assignments for jobId: ${jobId}`,
+    );
 
     return res.status(200).json({
       message: "Assignments retrieved successfully",

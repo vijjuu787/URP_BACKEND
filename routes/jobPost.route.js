@@ -4,19 +4,9 @@ const pool = require("../db");
 const { prisma } = require("../prisma/index.js");
 const requireAuth = require("../middleware/AuthMiddleware.js");
 
-// GET all job postings (PUBLIC - no auth required)
 router.get("/", async (req, res) => {
   try {
     const result = await prisma.jobPosting.findMany({
-      include: {
-        assignment: {
-          select: {
-            id: true,
-            title: true,
-            difficulty: true,
-          },
-        },
-      },
       orderBy: { createdAt: "desc" },
     });
     res.json(result);
