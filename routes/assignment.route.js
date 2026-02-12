@@ -184,9 +184,6 @@ router.post(
           downloadAssetsName,
           timeLimitHours: parseInt(timeLimitHours),
         },
-        include: {
-          job: true,
-        },
       });
 
       res.status(201).json({

@@ -11,6 +11,7 @@ model User {
   id                    String                 @id @default(uuid())
   fullName              String
   email                 String                 @unique
+  phone              String?
   passwordHash          String
   resumeUrl             String?
   resumeFileName        String?
@@ -135,8 +136,8 @@ model Assignment {
   title                 String
   overview              String?
   techStack             String[]          @default([])
-  jobId                 String            @unique
-  job                   JobPosting        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId                 String?            @unique
+  job                   JobPosting?       @relation(fields: [jobId], references: [id], onDelete: Cascade)
   description           String   @db.Text
   difficulty            DifficultyLevel
   totalPoints           Int
@@ -227,6 +228,9 @@ model EngineerAssignment {
   @@unique([submissionId, engineerId])
   @@map("engineer_assignments")
 }
+
+
+
 
 enum UserRole {
   candidate

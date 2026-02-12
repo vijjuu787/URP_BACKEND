@@ -34,7 +34,6 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
-// GET all jobIDs the authenticated user (candidate) has applied for
 // User applies for a job by starting the assignment for that job
 router.get("/applied-jobs/all", requireAuth, async (req, res) => {
   try {

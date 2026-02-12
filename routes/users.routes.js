@@ -10,7 +10,7 @@ const uploadResume = require("../middleware/resumeUploadMiddleware.js");
 
 router.post("/signup", async (req, res) => {
   try {
-    const { fullName, email, password, role, resumeUrl } = req.body;
+    const { fullName, email, password, role, resumeUrl, phone } = req.body;
 
     const exists = await prisma.user.findUnique({ where: { email } });
     if (exists) {
@@ -23,6 +23,7 @@ router.post("/signup", async (req, res) => {
       data: {
         fullName,
         email,
+        phone,
         passwordHash: hash,
         role: role ?? "candidate",
         resumeUrl: resumeUrl ?? "",
