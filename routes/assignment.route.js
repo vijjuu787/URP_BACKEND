@@ -215,8 +215,8 @@ router.post(
   },
 );
 
-// PATCH - Assign an assignment to a job (many-to-many relationship)
-router.patch("/assign-to-job/:assignmentId", requireAuth, async (req, res) => {
+// POST - Assign an assignment to a job (many-to-many relationship)
+router.post("/assign-to-job/:assignmentId", requireAuth, async (req, res) => {
   try {
     const { assignmentId } = req.params;
     const { jobId } = req.body;
