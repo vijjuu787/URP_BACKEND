@@ -215,6 +215,90 @@ router.post(
   },
 );
 
+// PATCH - Assign an assignment to a job (many-to-many relationship)
+router.patch("/assign-to-job/:assignmentId", requireAuth, async (req, res) => {
+  try {
+    const { assignmentId } = req.params;
+    const { jobId } = req.body;
+
+    // Validate required fields
+    if (!jobId) {
+      return res.status(400).json({ error: "jobId is required" });
+    }
+
+    if (!assignmentId) {
+      return res.status(400).json({ error: "assignmentId is required" });
+    }
+
+    // Verify assignment exists
+    const assignment = await prisma.assignment.findUnique({
+      where: { id: assignmentId },
+    });
+
+    if (!assignment) {
+      return res.status(404).json({ error: "Assignment not found" });
+    }
+
+    // Verify job exists
+    const job = await prisma.jobPosting.findUnique({
+      where: { id: jobId },
+    });
+
+    if (!job) {
+      return res.status(404).json({ error: "Job posting not found" });
+    }
+
+    // Check if assignment is already linked to this job
+    const existingLink = await prisma.assignment.findFirst({
+      where: {
+        id: assignmentId,
+        jobs: {
+          some: {
+            id: jobId,
+          },
+        },
+      },
+    });
+
+    if (existingLink) {
+      return res.status(400).json({
+        error: "Assignment is already linked to this job",
+      });
+    }
+
+    // Assign the assignment to the job (update many-to-many relationship)
+    const updatedAssignment = await prisma.assignment.update({
+      where: { id: assignmentId },
+      data: {
+        jobs: {
+          connect: {
+            id: jobId,
+          },
+        },
+      },
+      include: {
+        jobs: true,
+      },
+    });
+
+    res.status(200).json({
+      message: "Assignment assigned to job successfully",
+      data: {
+        assignmentId: updatedAssignment.id,
+        assignmentTitle: updatedAssignment.title,
+        jobId: jobId,
+        totalJobsLinked: updatedAssignment.jobs.length,
+        linkedJobs: updatedAssignment.jobs,
+      },
+    });
+  } catch (err) {
+    console.error("Error assigning assignment to job:", err);
+    res
+      .status(500)
+      .json({ error: err.message || "Failed to assign assignment to job" });
+  }
+});
+
 // GET /download/:assignmentId - Download assignment ZIP file
 router.get("/download/:assignmentId", async (req, res) => {
   const { assignmentId } = req.params;
