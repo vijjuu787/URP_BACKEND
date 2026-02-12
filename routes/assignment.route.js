@@ -102,87 +102,102 @@ router.get("/job/:jobId", async (req, res) => {
   }
 });
 
+// POST - Create a new assignment
 router.post(
   "/",
   requireAuth,
   uploadZip.single("downloadAssets"),
   async (req, res) => {
-    console.log("Request body:", req.body);
-    const { title, description, difficulty, totalPoints, timeLimitHours } =
-      req.body;
-    const jobId = req.body.jobId; // jobId is required to link assignment to a job posting
-
-    // Validate required fields
-    if (
-      !title ||
-      !description ||
-      !difficulty ||
-      !totalPoints ||
-      !timeLimitHours ||
-      !jobId
-    ) {
-      return res.status(400).json({
-        error:
-          "title, description, difficulty, totalPoints, timeLimitHours, and jobId are required",
-      });
-    }
-
     try {
-      // Validate difficulty enum
-      const normalizedDifficulty = validateDifficulty(difficulty);
+      const {
+        title,
+        overview,
+        techStack,
+        description,
+        difficulty,
+        totalPoints,
+        timeLimitHours,
+      } = req.body;
 
-      // Verify jobId exists
-      const jobExists = await prisma.jobPosting.findUnique({
-        where: { id: jobId },
-      });
-
-      if (!jobExists) {
-        return res.status(404).json({
-          error: "JobPosting with specified jobId not found",
-        });
+      // Validate required fields
+      if (!title) {
+        return res.status(400).json({ error: "title is required" });
       }
 
-      // Generate file URL path if ZIP was uploaded
+      if (!description) {
+        return res.status(400).json({ error: "description is required" });
+      }
+
+      if (!difficulty) {
+        return res.status(400).json({ error: "difficulty is required" });
+      }
+
+      if (!totalPoints) {
+        return res.status(400).json({ error: "totalPoints is required" });
+      }
+
+      if (!timeLimitHours) {
+        return res.status(400).json({ error: "timeLimitHours is required" });
+      }
+
+      // Validate difficulty level
+      let validatedDifficulty;
+      try {
+        validatedDifficulty = validateDifficulty(difficulty);
+      } catch (err) {
+        return res.status(400).json({ error: err.message });
+      }
+
+      // Parse techStack if provided (could be JSON string or array)
+      let parsedTechStack = [];
+      if (techStack) {
+        if (typeof techStack === "string") {
+          try {
+            parsedTechStack = JSON.parse(techStack);
+          } catch {
+            parsedTechStack = techStack.split(",").map((s) => s.trim());
+          }
+        } else if (Array.isArray(techStack)) {
+          parsedTechStack = techStack;
+        }
+      }
+
+      // Handle file upload if present
       let downloadAssetsUrl = null;
       let downloadAssetsName = null;
+
       if (req.file) {
         downloadAssetsUrl = `/uploads/assignments/${req.file.filename}`;
         downloadAssetsName = req.file.originalname;
       }
 
-      const result = await prisma.assignment.create({
+      // Create assignment
+      const assignment = await prisma.assignment.create({
         data: {
           title,
+          overview: overview || null,
+          techStack: parsedTechStack,
           description,
-          difficulty: normalizedDifficulty,
-          totalPoints,
+          difficulty: validatedDifficulty,
+          totalPoints: parseInt(totalPoints),
           downloadAssetsUrl,
           downloadAssetsName,
-          timeLimitHours,
-          jobId, // This is all we need - the foreign key to connect to the job
+          timeLimitHours: parseInt(timeLimitHours),
         },
         include: {
-          job: true, // Include job details in response
+          job: true,
         },
       });
 
       res.status(201).json({
         message: "Assignment created successfully",
-        data: {
-          id: result.id,
-          title: result.title,
-          description: result.description,
-          difficulty: result.difficulty,
-          totalPoints: result.totalPoints,
-          timeLimitHours: result.timeLimitHours,
-          downloadAssetsUrl: result.downloadAssetsUrl,
-          downloadAssetsName: result.downloadAssetsName,
-          createdAt: result.createdAt,
-        },
+        data: assignment,
       });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: err.message });
+      console.error("Error creating assignment:", err);
+      res
+        .status(500)
+        .json({ error: err.message || "Failed to create assignment" });
     }
   },
 );
