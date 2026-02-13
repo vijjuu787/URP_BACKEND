@@ -8,8 +8,8 @@ const requireAuth = require("../middleware/AuthMiddleware.js");
 router.get("/all/summary", async (req, res) => {
   try {
     console.log("GET /all/summary endpoint called");
-    
-    // Get all assignment submissions with candidate and basic info
+
+    // Get all assignment submissions with candidate and assignment info
     const submissions = await prisma.assignmentSubmission.findMany({
       select: {
         id: true,
@@ -17,6 +17,11 @@ router.get("/all/summary", async (req, res) => {
         candidate: {
           select: {
             fullName: true,
+          },
+        },
+        assignment: {
+          select: {
+            title: true,
           },
         },
       },
@@ -37,6 +42,7 @@ router.get("/all/summary", async (req, res) => {
     const submissionSummary = submissions.map((sub) => ({
       id: sub.id,
       candidateName: sub.candidate.fullName,
+      assignmentTitle: sub.assignment.title,
       submittedTime: sub.submittedAt,
     }));
 
