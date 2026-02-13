@@ -4,7 +4,7 @@ const pool = require("../db");
 const { prisma } = require("../prisma/index.js");
 const requireAuth = require("../middleware/AuthMiddleware.js");
 
-// GET all assignment submissions with summary (candidate name, assignment title, submitted time)
+// GET all assignment submissions with summary (candidate name, assignment title, job title, submitted time)
 router.get("/all/summary", async (req, res) => {
   try {
     console.log("GET /all/summary endpoint called");
@@ -15,6 +15,7 @@ router.get("/all/summary", async (req, res) => {
         id: true,
         submittedAt: true,
         assignmentId: true,
+        candidateId: true,
         candidate: {
           select: {
             fullName: true,
@@ -35,7 +36,9 @@ router.get("/all/summary", async (req, res) => {
     }
 
     // Get assignment titles for all assignmentIds
-    const assignmentIds = [...new Set(submissions.map((sub) => sub.assignmentId))];
+    const assignmentIds = [
+      ...new Set(submissions.map((sub) => sub.assignmentId)),
+    ];
     const assignments = await prisma.assignment.findMany({
       where: { id: { in: assignmentIds } },
       select: { id: true, title: true },
@@ -47,13 +50,42 @@ router.get("/all/summary", async (req, res) => {
       assignmentTitleMap[assignment.id] = assignment.title;
     });
 
+    // Get job titles from AssignmentStart for each submission
+    const assignmentStarts = await prisma.assignmentStart.findMany({
+      where: {
+        assignmentId: { in: assignmentIds },
+      },
+      select: {
+        assignmentId: true,
+        candidateId: true,
+        job: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+      },
+    });
+
+    // Create a map of assignmentId_candidateId -> jobTitle
+    const jobTitleMap = {};
+    assignmentStarts.forEach((start) => {
+      const key = `${start.assignmentId}_${start.candidateId}`;
+      jobTitleMap[key] = start.job.title;
+    });
+
     // Transform data to include all required fields
-    const submissionSummary = submissions.map((sub) => ({
-      id: sub.id,
-      candidateName: sub.candidate.fullName,
-      assignmentTitle: assignmentTitleMap[sub.assignmentId] || "Unknown Assignment",
-      submittedTime: sub.submittedAt,
-    }));
+    const submissionSummary = submissions.map((sub) => {
+      const key = `${sub.assignmentId}_${sub.candidateId}`;
+      return {
+        id: sub.id,
+        candidateName: sub.candidate.fullName,
+        assignmentTitle:
+          assignmentTitleMap[sub.assignmentId] || "Unknown Assignment",
+        jobTitle: jobTitleMap[key] || "Unknown Job",
+        submittedTime: sub.submittedAt,
+      };
+    });
 
     res.json({
       message: "All assignment submissions retrieved successfully",
