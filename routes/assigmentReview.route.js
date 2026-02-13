@@ -14,6 +14,44 @@ router.get("/", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Database error" });
   }
 });
+
+// GET total score for a specific submission
+router.get("/score/:submissionId", requireAuth, async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+
+    // Validate submissionId is provided
+    if (!submissionId) {
+      return res.status(400).json({
+        error: "submissionId is required",
+      });
+    }
+
+    // Get only the total score for this submission
+    const review = await prisma.assignmentReview.findFirst({
+      where: { submissionId },
+      select: {
+        totalScore: true,
+      },
+    });
+
+    if (!review) {
+      return res.status(404).json({
+        error: "No review found for this submission",
+      });
+    }
+
+    res.json({
+      message: "Total score retrieved successfully",
+      submissionId,
+      totalScore: review.totalScore,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post("/", requireAuth, async (req, res) => {
   try {
     const {
@@ -53,5 +91,8 @@ router.post("/", requireAuth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+
+
 
 module.exports = router;
