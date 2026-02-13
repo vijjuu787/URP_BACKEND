@@ -22,11 +22,32 @@ function validateDifficulty(difficulty) {
 
 router.get("/", requireAuth, async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM assignments");
-    res.json(result.rows);
+    const assignments = await prisma.assignment.findMany({
+      include: {
+        jobs: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+        assignmentStarts: {
+          select: {
+            id: true,
+            candidateId: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json({
+      message: "All assignments retrieved successfully",
+      totalAssignments: assignments.length,
+      data: assignments,
+    });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error" });
+    res.status(500).json({ error: err.message || "Database error" });
   }
 });
 
@@ -39,7 +60,7 @@ router.get("/:id", async (req, res) => {
     const assignment = await prisma.assignment.findUnique({
       where: { id: String(id) },
       include: {
-        job: true,
+        jobs: true,
         assignmentStarts: true,
       },
     });
@@ -51,10 +72,13 @@ router.get("/:id", async (req, res) => {
 
     // Return assignment with file download URL
     res.json({
-      ...assignment,
-      downloadAssetsUrl: assignment.downloadAssetsUrl,
-      downloadAssetsName: assignment.downloadAssetsName,
-      description: assignment.description,
+      message: "Assignment retrieved successfully",
+      data: {
+        ...assignment,
+        downloadAssetsUrl: assignment.downloadAssetsUrl,
+        downloadAssetsName: assignment.downloadAssetsName,
+        description: assignment.description,
+      },
     });
   } catch (err) {
     console.error("Error fetching assignment by ID:", err.message);
