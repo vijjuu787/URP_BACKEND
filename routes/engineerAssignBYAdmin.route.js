@@ -14,78 +14,11 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
-// GET engineer name from submission ID
-router.get("/engineer/:submissionId", requireAuth, async (req, res) => {
+// GET all submissions with detailed information
+router.get("/submissions/all/details", requireAuth, async (req, res) => {
   try {
-    const { submissionId } = req.params;
-
-    // Validate submissionId is provided
-    if (!submissionId) {
-      return res.status(400).json({
-        error: "submissionId is required",
-      });
-    }
-
-    // Find all engineer assignments for this submission
+    // Find all engineer assignments with all related data
     const engineerAssignments = await prisma.engineerAssignment.findMany({
-      where: { submissionId },
-      select: {
-        id: true,
-        status: true,
-        assignedAt: true,
-        engineer: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-          },
-        },
-      },
-    });
-
-    if (engineerAssignments.length === 0) {
-      return res.status(404).json({
-        error: "No engineers assigned to this submission",
-      });
-    }
-
-    // Map to get engineer details
-    const engineers = engineerAssignments.map((assignment) => ({
-      id: assignment.id,
-      engineerId: assignment.engineer.id,
-      engineerName: assignment.engineer.fullName,
-      engineerEmail: assignment.engineer.email,
-      status: assignment.status,
-      assignedAt: assignment.assignedAt,
-    }));
-
-    res.json({
-      message: "Engineers retrieved successfully",
-      submissionId,
-      count: engineers.length,
-      data: engineers,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET detailed submission info from engineer assignment ID
-router.get("/submission-details/:assignmentId", requireAuth, async (req, res) => {
-  try {
-    const { assignmentId } = req.params;
-
-    // Validate assignmentId is provided
-    if (!assignmentId) {
-      return res.status(400).json({
-        error: "assignmentId is required",
-      });
-    }
-
-    // Find the engineer assignment with all related data
-    const engineerAssignment = await prisma.engineerAssignment.findUnique({
-      where: { id: assignmentId },
       select: {
         id: true,
         status: true,
@@ -94,6 +27,8 @@ router.get("/submission-details/:assignmentId", requireAuth, async (req, res) =>
           select: {
             id: true,
             submittedAt: true,
+            assignmentId: true,
+            candidateId: true,
             candidate: {
               select: {
                 id: true,
@@ -120,21 +55,32 @@ router.get("/submission-details/:assignmentId", requireAuth, async (req, res) =>
           },
         },
       },
+      orderBy: { assignedAt: "desc" },
     });
 
-    if (!engineerAssignment) {
-      return res.status(404).json({
-        error: "Engineer assignment not found",
+    if (engineerAssignments.length === 0) {
+      return res.json({
+        message: "No submissions found",
+        count: 0,
+        data: [],
       });
     }
 
+    // Get all unique assignmentId and candidateId pairs to fetch assignment/job details
+    const assignmentStartQueries = engineerAssignments.map((ea) => ({
+      assignmentId: ea.submission.assignmentId,
+      candidateId: ea.submission.candidateId,
+    }));
+
     // Get assignment and job details through AssignmentStart
-    const assignmentStart = await prisma.assignmentStart.findFirst({
+    const assignmentStarts = await prisma.assignmentStart.findMany({
       where: {
-        assignmentId: engineerAssignment.submission.id,
-        candidateId: engineerAssignment.submission.candidate.id,
+        OR: assignmentStartQueries,
       },
       select: {
+        assignmentId: true,
+        candidateId: true,
+        jobId: true,
         assignment: {
           select: {
             id: true,
@@ -153,6 +99,13 @@ router.get("/submission-details/:assignmentId", requireAuth, async (req, res) =>
       },
     });
 
+    // Create a map for quick lookup
+    const assignmentStartMap = {};
+    assignmentStarts.forEach((start) => {
+      const key = `${start.assignmentId}_${start.candidateId}`;
+      assignmentStartMap[key] = start;
+    });
+
     // Map job role type to readable format
     const roleTypeMap = {
       "Frontend Engineer": "Frontend Engineer",
@@ -164,44 +117,56 @@ router.get("/submission-details/:assignmentId", requireAuth, async (req, res) =>
       full_stack: "Full Stack Engineer",
     };
 
-    const jobRole =
-      roleTypeMap[assignmentStart?.job?.roleType] || assignmentStart?.job?.roleType || "Unknown Role";
+    // Transform all submissions
+    const submissionDataArray = engineerAssignments.map((ea) => {
+      const key = `${ea.submission.assignmentId}_${ea.submission.candidateId}`;
+      const assignmentStart = assignmentStartMap[key];
 
-    // Transform submission files to match the expected format
-    const submissionFiles = engineerAssignment.submission.submissionFiles.map((file) => ({
-      id: file.id,
-      name: file.fileName || "Untitled File",
-      url: file.fileUrl || "",
-      type: file.fileType?.toLowerCase() || "other",
-    }));
+      const jobRole =
+        roleTypeMap[assignmentStart?.job?.roleType] ||
+        assignmentStart?.job?.roleType ||
+        "Unknown Role";
 
-    // Build the response
-    const submissionData = {
-      id: engineerAssignment.submission.id,
-      engineerAssignmentId: engineerAssignment.id,
-      candidateName: engineerAssignment.submission.candidate.fullName,
-      candidateEmail: engineerAssignment.submission.candidate.email,
-      candidateId: engineerAssignment.submission.candidate.id,
-      jobRole: jobRole,
-      assignmentTitle: assignmentStart?.assignment?.title || "Unknown Assignment",
-      assignmentDescription: assignmentStart?.assignment?.description || "",
-      assignmentDifficulty: assignmentStart?.assignment?.difficulty || "UNKNOWN",
-      submissionDate: engineerAssignment.submission.submittedAt
-        ? new Date(engineerAssignment.submission.submittedAt).toISOString()
-        : null,
-      submissionStatus: engineerAssignment.status,
-      assignedAt: engineerAssignment.assignedAt,
-      submissionFiles: submissionFiles,
-      engineer: {
-        id: engineerAssignment.engineer.id,
-        name: engineerAssignment.engineer.fullName,
-        email: engineerAssignment.engineer.email,
-      },
-    };
+      const submissionFiles = ea.submission.submissionFiles.map((file) => ({
+        id: file.id,
+        name: file.fileName || "Untitled File",
+        url: file.fileUrl || "",
+        type: file.fileType?.toLowerCase() || "other",
+      }));
+
+      return {
+        id: ea.submission.id,
+        engineerAssignmentId: ea.id,
+        candidateName: ea.submission.candidate.fullName,
+        candidateEmail: ea.submission.candidate.email,
+        candidateId: ea.submission.candidate.id,
+        jobRole: jobRole,
+        jobId: assignmentStart?.jobId || "Unknown Job",
+        jobTitle: assignmentStart?.job?.title || "Unknown Job Title",
+        assignmentId: ea.submission.assignmentId,
+        assignmentTitle:
+          assignmentStart?.assignment?.title || "Unknown Assignment",
+        assignmentDescription: assignmentStart?.assignment?.description || "",
+        assignmentDifficulty:
+          assignmentStart?.assignment?.difficulty || "UNKNOWN",
+        submissionDate: ea.submission.submittedAt
+          ? new Date(ea.submission.submittedAt).toISOString()
+          : null,
+        submissionStatus: ea.status,
+        assignedAt: ea.assignedAt,
+        submissionFiles: submissionFiles,
+        engineer: {
+          id: ea.engineer.id,
+          name: ea.engineer.fullName,
+          email: ea.engineer.email,
+        },
+      };
+    });
 
     res.json({
-      message: "Submission details retrieved successfully",
-      data: submissionData,
+      message: "All submission details retrieved successfully",
+      count: submissionDataArray.length,
+      data: submissionDataArray,
     });
   } catch (err) {
     console.error(err);
@@ -233,5 +198,4 @@ router.post("/", requireAuth, async (req, res) => {
   }
 });
 
-module.exports = router;
 module.exports = router;
