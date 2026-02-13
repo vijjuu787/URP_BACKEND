@@ -4,6 +4,49 @@ const pool = require("../db");
 const { prisma } = require("../prisma/index.js");
 const requireAuth = require("../middleware/AuthMiddleware.js");
 
+// GET all assignment submissions with summary (candidate name, assignment title, submitted time)
+router.get("/all/summary", async (req, res) => {
+  try {
+    // Get all assignment submissions with candidate and basic info
+    const submissions = await prisma.assignmentSubmission.findMany({
+      select: {
+        id: true,
+        submittedAt: true,
+        candidate: {
+          select: {
+            fullName: true,
+          },
+        },
+      },
+      orderBy: { submittedAt: "desc" },
+    });
+
+    if (submissions.length === 0) {
+      return res.json({
+        message: "No assignment submissions found",
+        count: 0,
+        data: [],
+      });
+    }
+
+    // Transform data to include all required fields
+    const submissionSummary = submissions.map((sub) => ({
+      id: sub.id,
+      candidateName: sub.candidate.fullName,
+      submittedTime: sub.submittedAt,
+    }));
+
+    res.json({
+      message: "All assignment submissions retrieved successfully",
+      count: submissionSummary.length,
+      data: submissionSummary,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET all assignment submissions for a specific candidate ID (PUBLIC)
 router.get("/candidate/:candidateId", async (req, res) => {
   try {
@@ -215,4 +258,7 @@ router.post("/", requireAuth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+
+
 module.exports = router;
