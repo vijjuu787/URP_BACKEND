@@ -9,19 +9,15 @@ router.get("/all/summary", async (req, res) => {
   try {
     console.log("GET /all/summary endpoint called");
 
-    // Get all assignment submissions with candidate and assignment info
+    // Get all assignment submissions with candidate info
     const submissions = await prisma.assignmentSubmission.findMany({
       select: {
         id: true,
         submittedAt: true,
+        assignmentId: true,
         candidate: {
           select: {
             fullName: true,
-          },
-        },
-        assignment: {
-          select: {
-            title: true,
           },
         },
       },
@@ -38,11 +34,24 @@ router.get("/all/summary", async (req, res) => {
       });
     }
 
+    // Get assignment titles for all assignmentIds
+    const assignmentIds = [...new Set(submissions.map((sub) => sub.assignmentId))];
+    const assignments = await prisma.assignment.findMany({
+      where: { id: { in: assignmentIds } },
+      select: { id: true, title: true },
+    });
+
+    // Create a map of assignmentId -> title
+    const assignmentTitleMap = {};
+    assignments.forEach((assignment) => {
+      assignmentTitleMap[assignment.id] = assignment.title;
+    });
+
     // Transform data to include all required fields
     const submissionSummary = submissions.map((sub) => ({
       id: sub.id,
       candidateName: sub.candidate.fullName,
-      assignmentTitle: sub.assignment.title,
+      assignmentTitle: assignmentTitleMap[sub.assignmentId] || "Unknown Assignment",
       submittedTime: sub.submittedAt,
     }));
 
