@@ -444,6 +444,7 @@ router.post("/", requireAuth, async (req, res) => {
     const { assignmentId, candidateId, jobId } = req.body;
     // const candidateId = req.user.id;
     console.log("Authenticated user ID (candidateId):", candidateId);
+    console.log("Received - assignmentId:", assignmentId, "jobId:", jobId);
 
     // Validate required fields
     if (!assignmentId) {
@@ -471,7 +472,22 @@ router.post("/", requireAuth, async (req, res) => {
     if (!assignment) {
       return res.status(404).json({
         error: "Assignment not found",
+        assignmentId: assignmentId,
       });
+    }
+
+    // Validate jobId if provided
+    if (jobId) {
+      const job = await prisma.jobPosting.findUnique({
+        where: { id: jobId },
+      });
+
+      if (!job) {
+        return res.status(404).json({
+          error: "Job posting not found",
+          jobId: jobId,
+        });
+      }
     }
 
     // Check if user has already started this assignment
@@ -506,7 +522,7 @@ router.post("/", requireAuth, async (req, res) => {
       data: {
         candidateId,
         assignmentId,
-        jobId,
+        jobId: jobId || null,
         startedAt: new Date(),
       },
       include: {
@@ -527,7 +543,7 @@ router.post("/", requireAuth, async (req, res) => {
       data: assignmentStart,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Error creating assignment start:", err);
     res.status(500).json({ error: err.message });
   }
 });
