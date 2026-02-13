@@ -337,9 +337,6 @@ router.get("/from-job/:jobId", requireAuth, async (req, res) => {
       where: {
         jobId,
         candidateId, // Ensure user can only view their own records
-        assignmentId: {
-          not: null,
-        },
       },
       select: {
         id: true,
