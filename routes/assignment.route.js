@@ -89,6 +89,74 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+// Get random assignment ID linked to a jobId (PUBLIC - no auth required)
+router.get("/random-by-job/:jobId", async (req, res) => {
+  const { jobId } = req.params;
+
+  try {
+    console.log(`Fetching random assignment for jobId: ${jobId}`);
+
+    // First verify the job exists
+    const job = await prisma.jobPosting.findUnique({
+      where: { id: jobId },
+    });
+
+    if (!job) {
+      return res.status(404).json({
+        error: "Job posting not found",
+        jobId: jobId,
+      });
+    }
+
+    // Get all assignments linked to this job (many-to-many relationship)
+    const assignments = await prisma.assignment.findMany({
+      where: {
+        jobs: {
+          some: {
+            id: jobId,
+          },
+        },
+      },
+      select: {
+        id: true,
+        title: true,
+        difficulty: true,
+        totalPoints: true,
+        timeLimitHours: true,
+      },
+    });
+
+    if (assignments.length === 0) {
+      return res.status(404).json({
+        error: "No assignments found for this job",
+        jobId: jobId,
+      });
+    }
+
+    // Get random assignment from the list
+    const randomAssignment =
+      assignments[Math.floor(Math.random() * assignments.length)];
+
+    res.json({
+      message: "Random assignment retrieved successfully",
+      data: {
+        jobId: jobId,
+        assignmentId: randomAssignment.id,
+        assignmentTitle: randomAssignment.title,
+        difficulty: randomAssignment.difficulty,
+        totalPoints: randomAssignment.totalPoints,
+        timeLimitHours: randomAssignment.timeLimitHours,
+      },
+    });
+  } catch (err) {
+    console.error("Error fetching random assignment by jobId:", err.message);
+    console.error(err);
+    res
+      .status(500)
+      .json({ error: err.message || "Failed to fetch random assignment" });
+  }
+});
+
 // Get all assignments linked with the same jobId (PUBLIC - no auth required)
 // Since Assignment and JobPosting have many-to-many relationship
 router.get("/job/:jobId", async (req, res) => {
