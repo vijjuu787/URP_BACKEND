@@ -325,7 +325,7 @@ router.get("/timings/all/current", requireAuth, async (req, res) => {
 // Must be BEFORE /job/:jobId and /:id routes to match properly
 router.get("/from-job/:jobId", requireAuth, async (req, res) => {
   try {
-    const { jobId } = req.params;
+    const { jobId, assignmentId } = req.params;
     const candidateId = req.user?.id;
 
     if (!candidateId) {
@@ -337,6 +337,7 @@ router.get("/from-job/:jobId", requireAuth, async (req, res) => {
       where: {
         jobId,
         candidateId, // Ensure user can only view their own records
+        assignmentId,
       },
       select: {
         id: true,
