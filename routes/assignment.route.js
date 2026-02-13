@@ -121,6 +121,8 @@ router.get("/random-by-job/:jobId", async (req, res) => {
         id: true,
         title: true,
         difficulty: true,
+        description: true,
+
         totalPoints: true,
         timeLimitHours: true,
       },
