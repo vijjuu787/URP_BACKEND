@@ -7,6 +7,8 @@ const requireAuth = require("../middleware/AuthMiddleware.js");
 // GET all assignment submissions with summary (candidate name, assignment title, submitted time)
 router.get("/all/summary", async (req, res) => {
   try {
+    console.log("GET /all/summary endpoint called");
+    
     // Get all assignment submissions with candidate and basic info
     const submissions = await prisma.assignmentSubmission.findMany({
       select: {
@@ -20,6 +22,8 @@ router.get("/all/summary", async (req, res) => {
       },
       orderBy: { submittedAt: "desc" },
     });
+
+    console.log(`Found ${submissions.length} submissions`);
 
     if (submissions.length === 0) {
       return res.json({
@@ -42,7 +46,7 @@ router.get("/all/summary", async (req, res) => {
       data: submissionSummary,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Error in /all/summary:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -258,7 +262,5 @@ router.post("/", requireAuth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-
 
 module.exports = router;
