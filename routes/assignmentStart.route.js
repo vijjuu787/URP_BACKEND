@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require("../db");
 const { prisma } = require("../prisma/index.js");
 const requireAuth = require("../middleware/AuthMiddleware.js");
+const { describe } = require("node:test");
 
 // GET all assignment starts for authenticated user
 router.get("/", requireAuth, async (req, res) => {
@@ -350,6 +351,7 @@ router.get("/from-job/:jobId", requireAuth, async (req, res) => {
             id: true,
             title: true,
             difficulty: true,
+            description: true,
             totalPoints: true,
             timeLimitHours: true,
           },
