@@ -233,4 +233,66 @@ router.post(
   },
 );
 
+// GET /engineers/list - Get all engineers with their full names
+router.get("/engineers/list", async (req, res) => {
+  try {
+    const engineers = await prisma.user.findMany({
+      where: { role: "engineer" },
+      select: {
+        id: true,
+        fullName: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (engineers.length === 0) {
+      return res.status(404).json({ error: "No engineers found" });
+    }
+
+    res.json({
+      message: "Engineers retrieved successfully",
+      totalEngineers: engineers.length,
+      data: engineers,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /engineer/:userId - Get specific engineer details
+router.get("/engineer/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const engineer = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        resumeUrl: true,
+        resumeFileName: true,
+        resumeUploadedAt: true,
+        createdAt: true,
+      },
+    });
+
+    if (!engineer) {
+      return res.status(404).json({ error: "Engineer not found" });
+    }
+
+    if (engineer.role !== "engineer") {
+      return res.status(400).json({ error: "User is not an engineer" });
+    }
+
+    res.json({
+      message: "Engineer details retrieved successfully",
+      data: engineer,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
