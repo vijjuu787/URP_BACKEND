@@ -4,13 +4,18 @@ const pool = require("../db");
 const { prisma } = require("../prisma/index.js");
 const requireAuth = require("../middleware/AuthMiddleware.js");
 
-// GET all assignment submissions with summary (candidate name, assignment title, job title, submitted time)
+// GET all assignment submissions with summary (candidate name, assignment title, job title, submitted time) - only submitted
 router.get("/all/summary", async (req, res) => {
   try {
     console.log("GET /all/summary endpoint called");
 
-    // Get all assignment submissions with candidate info
+    // Get all assignment submissions with candidate info - ONLY where submittedAt is NOT NULL
     const submissions = await prisma.assignmentSubmission.findMany({
+      where: {
+        submittedAt: {
+          not: null,
+        },
+      },
       select: {
         id: true,
         submittedAt: true,
@@ -25,11 +30,11 @@ router.get("/all/summary", async (req, res) => {
       orderBy: { submittedAt: "desc" },
     });
 
-    console.log(`Found ${submissions.length} submissions`);
+    console.log(`Found ${submissions.length} submitted submissions`);
 
     if (submissions.length === 0) {
       return res.json({
-        message: "No assignment submissions found",
+        message: "No submitted assignment submissions found",
         count: 0,
         data: [],
       });
@@ -88,7 +93,7 @@ router.get("/all/summary", async (req, res) => {
     });
 
     res.json({
-      message: "All assignment submissions retrieved successfully",
+      message: "All submitted assignment submissions retrieved successfully",
       count: submissionSummary.length,
       data: submissionSummary,
     });
