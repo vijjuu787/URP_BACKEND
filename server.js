@@ -53,6 +53,7 @@ const corsOptions = {
     "http://localhost:5173",
     "http://localhost:3000",
     "https://urp-frontend-inin.vercel.app",
+    "https://recruit.cypherock.com/",
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
