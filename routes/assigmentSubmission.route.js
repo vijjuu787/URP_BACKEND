@@ -4,6 +4,50 @@ const pool = require("../db");
 const { prisma } = require("../prisma/index.js");
 const requireAuth = require("../middleware/AuthMiddleware.js");
 
+// GET submission content by submission ID
+router.get("/:submissionId/content", async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+
+    // Validate submissionId is provided
+    if (!submissionId) {
+      return res.status(400).json({
+        error: "submissionId is required",
+      });
+    }
+
+    // Get submission with content
+    const submission = await prisma.assignmentSubmission.findUnique({
+      where: { id: submissionId },
+      select: {
+        id: true,
+        submissionContent: true,
+        candidateId: true,
+        assignmentId: true,
+        submittedAt: true,
+      },
+    });
+
+    if (!submission) {
+      return res.status(404).json({
+        error: "Submission not found",
+      });
+    }
+
+    res.json({
+      message: "Submission content retrieved successfully",
+      submissionId,
+      submissionContent: submission.submissionContent,
+      candidateId: submission.candidateId,
+      assignmentId: submission.assignmentId,
+      submittedAt: submission.submittedAt,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET all assignment submissions with summary (candidate name, assignment title, job title, submitted time) - only submitted
 router.get("/all/summary", async (req, res) => {
   try {
@@ -317,5 +361,7 @@ router.post("/", requireAuth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+
 
 module.exports = router;

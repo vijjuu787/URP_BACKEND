@@ -141,7 +141,7 @@ model Assignment {
   techStack             String[]          @default([])
   description           String   @db.Text
   difficulty            DifficultyLevel
-  totalPoints           Int
+  totalPoints           Int?
   downloadAssetsUrl     String?
   downloadAssetsName    String?
   timeLimitHours        Int
