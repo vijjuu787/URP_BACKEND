@@ -11,7 +11,7 @@ model User {
   id                    String                 @id @default(uuid())
   fullName              String
   email                 String                 @unique
-  phone              String?
+  phone               String?
   passwordHash          String
   resumeUrl             String?
   resumeFileName        String?
@@ -176,6 +176,7 @@ model AssignmentSubmission {
   deadline            DateTime?
   status              AssignmentStatus     @default(NOT_STARTED)
   candidateNotes      String?
+  submissionContent   String?              @db.Text          // Submission data/URL/content
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   submissionFiles     SubmissionFile[]
@@ -190,9 +191,9 @@ model AssignmentSubmission {
 model SubmissionFile {
   id           String               @id @default(uuid())
   submissionId String
-  fileName     String
-  fileType     SubmissionFileType
-  fileUrl      String
+  fileName     String?
+  fileType     SubmissionFileType?
+  fileUrl      String?
   uploadedAt   DateTime             @default(now())
   submission   AssignmentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -284,6 +285,9 @@ enum SubmissionFileType {
 }
 
 enum ReviewStatus {
+  REVIEWED
+  IN_PROGRESS
+  REVIEWING
   DRAFT
   SUBMITTED
 }
