@@ -191,6 +191,112 @@ router.get("/candidate/:candidateId", async (req, res) => {
   }
 });
 
+// POST - Create a submission file
+router.post("/:submissionId/files", requireAuth, async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+    const { fileName, fileType, fileUrl } = req.body;
+
+    // Validate submissionId is provided
+    if (!submissionId) {
+      return res.status(400).json({
+        error: "submissionId is required",
+      });
+    }
+
+    // Validate fileUrl is provided
+    if (!fileUrl) {
+      return res.status(400).json({
+        error: "fileUrl is required",
+      });
+    }
+
+    // Verify submission exists
+    const submission = await prisma.assignmentSubmission.findUnique({
+      where: { id: submissionId },
+    });
+
+    if (!submission) {
+      return res.status(404).json({
+        error: "Submission not found",
+      });
+    }
+
+    // Create the submission file
+    const submissionFile = await prisma.submissionFile.create({
+      data: {
+        submissionId,
+        fileName: fileName || "Untitled File",
+        fileType: fileType || "OTHER",
+        fileUrl,
+      },
+    });
+
+    res.status(201).json({
+      message: "Submission file created successfully",
+      data: {
+        id: submissionFile.id,
+        submissionId: submissionFile.submissionId,
+        fileName: submissionFile.fileName,
+        fileType: submissionFile.fileType,
+        fileUrl: submissionFile.fileUrl,
+        uploadedAt: submissionFile.uploadedAt,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - Get all files for a submission
+router.get("/:submissionId/files", async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+
+    // Validate submissionId is provided
+    if (!submissionId) {
+      return res.status(400).json({
+        error: "submissionId is required",
+      });
+    }
+
+    // Verify submission exists
+    const submission = await prisma.assignmentSubmission.findUnique({
+      where: { id: submissionId },
+    });
+
+    if (!submission) {
+      return res.status(404).json({
+        error: "Submission not found",
+      });
+    }
+
+    // Get all files for this submission
+    const files = await prisma.submissionFile.findMany({
+      where: { submissionId },
+      select: {
+        id: true,
+        fileName: true,
+        fileType: true,
+        fileUrl: true,
+        uploadedAt: true,
+      },
+      orderBy: { uploadedAt: "desc" },
+    });
+
+    res.json({
+      message: "Submission files retrieved successfully",
+      submissionId,
+      count: files.length,
+      data: files,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post("/", requireAuth, async (req, res) => {
   try {
     console.log("Request body:", req.body);
