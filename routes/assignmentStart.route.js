@@ -348,7 +348,8 @@ router.get("/from-job/:jobId", requireAuth, async (req, res) => {
           select: {
             id: true,
             title: true,
-
+            overview: true,
+            objective: true,
             difficulty: true,
             description: true,
             totalPoints: true,
