@@ -168,8 +168,6 @@ router.get("/candidate/:candidateId", requireAuth, async (req, res) => {
   }
 });
 
-// GET assignment timing information (elapsed time, remaining time, etc.)
-// Must be BEFORE /:id route to match properly
 router.get("/timing/:assignmentStartId", requireAuth, async (req, res) => {
   try {
     const { assignmentStartId } = req.params;
@@ -350,6 +348,8 @@ router.get("/from-job/:jobId", requireAuth, async (req, res) => {
           select: {
             id: true,
             title: true,
+            overview: true,
+            objective: true,
             difficulty: true,
             description: true,
             totalPoints: true,
@@ -439,7 +439,6 @@ router.get("/job/:assignmentStartId", requireAuth, async (req, res) => {
   }
 });
 
-// POST - Start an assignment (create AssignmentStart record)
 router.post("/", requireAuth, async (req, res) => {
   try {
     console.log("Request body:", req.body);
