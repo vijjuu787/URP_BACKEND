@@ -138,6 +138,7 @@ model Assignment {
   id                    String            @id @default(uuid())
   title                 String
   overview              String?
+  objective             String?
   techStack             String[]          @default([])
   description           String   @db.Text
   difficulty            DifficultyLevel
