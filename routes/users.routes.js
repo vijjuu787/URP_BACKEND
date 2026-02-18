@@ -295,4 +295,69 @@ router.get("/engineer/:userId", async (req, res) => {
   }
 });
 
+// GET /all - Get all users with their details and statistics
+router.get("/all", requireAuth, async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        assignmentStarts: {
+          select: {
+            id: true,
+          },
+        },
+        assignmentSubmissions: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+        assignmentReviews: {
+          select: {
+            totalScore: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Transform data to match the requested format
+    const formattedUsers = users.map((user) => {
+      // Count challenges (assignment submissions)
+      const challenges = user.assignmentSubmissions.length;
+
+      // Calculate total points from reviews
+      const points = Math.round(
+        user.assignmentReviews.reduce((sum, review) => sum + review.totalScore, 0),
+      );
+
+      return {
+        id: user.id,
+        name: user.fullName,
+        email: user.email,
+        role: user.role.charAt(0).toUpperCase() + user.role.slice(1), // Capitalize role
+        status: user.isActive ? "active" : "inactive",
+        joinedDate: user.createdAt.toISOString().split("T")[0], // Format as YYYY-MM-DD
+        challenges,
+        points,
+        lastActive: "recently", // You can enhance this with lastActiveAt field in schema
+      };
+    });
+
+    res.json({
+      message: "All users retrieved successfully",
+      totalUsers: formattedUsers.length,
+      data: formattedUsers,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
