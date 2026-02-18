@@ -76,4 +76,105 @@ router.post("/", requireAuth, async (req, res) => {
   }
 });
 
+// UPDATE job posting
+router.put("/:jobId", requireAuth, async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const {
+      title,
+      description,
+      workType,
+      roleType,
+      requirements,
+      responsibilities,
+      difficulty,
+      points,
+      status,
+      salaryRange,
+      experienceLevel,
+    } = req.body;
+
+    // Validate jobId
+    if (!jobId) {
+      return res.status(400).json({ error: "jobId is required" });
+    }
+
+    // Check if job exists
+    const existingJob = await prisma.jobPosting.findUnique({
+      where: { id: jobId },
+    });
+
+    if (!existingJob) {
+      return res.status(404).json({ error: "Job posting not found" });
+    }
+
+    // Convert array to string if needed
+    const reqString = Array.isArray(requirements)
+      ? requirements.join(", ")
+      : requirements;
+    const respString = Array.isArray(responsibilities)
+      ? responsibilities.join(", ")
+      : responsibilities;
+
+    const updatedJob = await prisma.jobPosting.update({
+      where: { id: jobId },
+      data: {
+        ...(title && { title }),
+        ...(description && { description }),
+        ...(workType && { workType }),
+        ...(roleType && { roleType }),
+        ...(requirements && { requirements: reqString }),
+        ...(difficulty && { difficulty }),
+        ...(experienceLevel && { experienceLevel }),
+        ...(salaryRange && { salaryRange }),
+        ...(responsibilities && { responsibilities: respString }),
+        ...(points && { points }),
+        ...(status && { status }),
+      },
+    });
+
+    res.json({
+      message: "Job posting updated successfully",
+      data: updatedJob,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE job posting
+router.delete("/:jobId", requireAuth, async (req, res) => {
+  try {
+    const { jobId } = req.params;
+
+    // Validate jobId
+    if (!jobId) {
+      return res.status(400).json({ error: "jobId is required" });
+    }
+
+    // Check if job exists
+    const existingJob = await prisma.jobPosting.findUnique({
+      where: { id: jobId },
+    });
+
+    if (!existingJob) {
+      return res.status(404).json({ error: "Job posting not found" });
+    }
+
+    // Delete the job posting
+    await prisma.jobPosting.delete({
+      where: { id: jobId },
+    });
+
+    res.json({
+      message: "Job posting deleted successfully",
+      deletedId: jobId,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
