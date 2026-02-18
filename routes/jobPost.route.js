@@ -24,6 +24,7 @@ router.post("/", requireAuth, async (req, res) => {
   const {
     title,
     description,
+    company,
     workType,
     roleType,
     requirements,
@@ -52,6 +53,7 @@ router.post("/", requireAuth, async (req, res) => {
         title,
         workType,
         description,
+        company,
         roleType,
         requirements: reqString,
         difficulty,
@@ -140,6 +142,7 @@ router.put("/:jobId", requireAuth, async (req, res) => {
     const {
       title,
       description,
+      company,
       workType,
       roleType,
       requirements,
@@ -178,6 +181,7 @@ router.put("/:jobId", requireAuth, async (req, res) => {
       data: {
         ...(title && { title }),
         ...(description && { description }),
+        ...(company && { company }),
         ...(workType && { workType }),
         ...(roleType && { roleType }),
         ...(requirements && { requirements: reqString }),
