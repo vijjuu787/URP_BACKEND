@@ -159,8 +159,6 @@ router.get("/random-by-job/:jobId", async (req, res) => {
   }
 });
 
-// Get all assignments linked with the same jobId (PUBLIC - no auth required)
-// Since Assignment and JobPosting have many-to-many relationship
 router.get("/job/:jobId", async (req, res) => {
   const { jobId } = req.params;
 
@@ -427,6 +425,123 @@ router.get("/download/:assignmentId", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT - Update an assignment
+router.put("/:assignmentId", requireAuth, uploadZip.single("downloadAssets"), async (req, res) => {
+  try {
+    const { assignmentId } = req.params;
+    const {
+      title,
+      overview,
+      objective,
+      techStack,
+      description,
+      difficulty,
+      totalPoints,
+      timeLimitHours,
+    } = req.body;
+
+    // Validate assignmentId
+    if (!assignmentId) {
+      return res.status(400).json({ error: "assignmentId is required" });
+    }
+
+    // Check if assignment exists
+    const existingAssignment = await prisma.assignment.findUnique({
+      where: { id: assignmentId },
+    });
+
+    if (!existingAssignment) {
+      return res.status(404).json({ error: "Assignment not found" });
+    }
+
+    // Validate difficulty if provided
+    let validatedDifficulty = existingAssignment.difficulty;
+    if (difficulty) {
+      validatedDifficulty = validateDifficulty(difficulty);
+    }
+
+    // Prepare update data
+    const updateData = {
+      ...(title && { title }),
+      ...(overview && { overview }),
+      ...(objective && { objective }),
+      ...(techStack && { techStack: Array.isArray(techStack) ? techStack : [techStack] }),
+      ...(description && { description }),
+      ...(difficulty && { difficulty: validatedDifficulty }),
+      ...(totalPoints && { totalPoints: parseInt(totalPoints) }),
+      ...(timeLimitHours && { timeLimitHours: parseInt(timeLimitHours) }),
+    };
+
+    // Handle file upload if provided
+    if (req.file) {
+      updateData.downloadAssetsUrl = `/${req.file.path}`;
+      updateData.downloadAssetsName = req.file.originalname;
+    }
+
+    const updatedAssignment = await prisma.assignment.update({
+      where: { id: assignmentId },
+      data: updateData,
+      include: {
+        jobs: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+      },
+    });
+
+    res.json({
+      message: "Assignment updated successfully",
+      data: updatedAssignment,
+    });
+  } catch (err) {
+    console.error("Error updating assignment:", err);
+    res.status(500).json({ error: err.message || "Failed to update assignment" });
+  }
+});
+
+// DELETE - Delete an assignment
+router.delete("/:assignmentId", requireAuth, async (req, res) => {
+  try {
+    const { assignmentId } = req.params;
+
+    // Validate assignmentId
+    if (!assignmentId) {
+      return res.status(400).json({ error: "assignmentId is required" });
+    }
+
+    // Check if assignment exists
+    const existingAssignment = await prisma.assignment.findUnique({
+      where: { id: assignmentId },
+      include: {
+        jobs: true,
+        assignmentStarts: true,
+      },
+    });
+
+    if (!existingAssignment) {
+      return res.status(404).json({ error: "Assignment not found" });
+    }
+
+    // Delete the assignment (cascade delete will handle related records)
+    await prisma.assignment.delete({
+      where: { id: assignmentId },
+    });
+
+    res.json({
+      message: "Assignment deleted successfully",
+      deletedId: assignmentId,
+      deletedAssignmentTitle: existingAssignment.title,
+      linkedJobsCount: existingAssignment.jobs.length,
+      assignmentStartsCount: existingAssignment.assignmentStarts.length,
+    });
+  } catch (err) {
+    console.error("Error deleting assignment:", err);
+    res.status(500).json({ error: err.message || "Failed to delete assignment" });
   }
 });
 
