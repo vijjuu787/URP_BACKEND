@@ -76,6 +76,63 @@ router.post("/", requireAuth, async (req, res) => {
   }
 });
 
+// GET assignments for a particular jobID
+router.get("/:jobId/assignments", async (req, res) => {
+  try {
+    const { jobId } = req.params;
+
+    // Validate jobId
+    if (!jobId) {
+      return res.status(400).json({ error: "jobId is required" });
+    }
+
+    // Check if job exists
+    const job = await prisma.jobPosting.findUnique({
+      where: { id: jobId },
+    });
+
+    if (!job) {
+      return res.status(404).json({ error: "Job posting not found" });
+    }
+
+    // Get all assignments linked to this job
+    const assignments = await prisma.jobPosting.findUnique({
+      where: { id: jobId },
+      select: {
+        id: true,
+        title: true,
+        assignments: {
+          select: {
+            id: true,
+            title: true,
+            overview: true,
+            objective: true,
+            difficulty: true,
+            description: true,
+            totalPoints: true,
+            timeLimitHours: true,
+            techStack: true,
+            downloadAssetsUrl: true,
+            downloadAssetsName: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    res.json({
+      message: "Assignments retrieved successfully",
+      jobId,
+      jobTitle: assignments.title,
+      assignments: assignments.assignments,
+      totalAssignments: assignments.assignments.length,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // UPDATE job posting
 router.put("/:jobId", requireAuth, async (req, res) => {
   try {
@@ -176,5 +233,7 @@ router.delete("/:jobId", requireAuth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+
 
 module.exports = router;
