@@ -238,6 +238,4 @@ router.delete("/:jobId", requireAuth, async (req, res) => {
   }
 });
 
-
-
 module.exports = router;

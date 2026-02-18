@@ -429,80 +429,89 @@ router.get("/download/:assignmentId", async (req, res) => {
 });
 
 // PUT - Update an assignment
-router.put("/:assignmentId", requireAuth, uploadZip.single("downloadAssets"), async (req, res) => {
-  try {
-    const { assignmentId } = req.params;
-    const {
-      title,
-      overview,
-      objective,
-      techStack,
-      description,
-      difficulty,
-      totalPoints,
-      timeLimitHours,
-    } = req.body;
+router.put(
+  "/:assignmentId",
+  requireAuth,
+  uploadZip.single("downloadAssets"),
+  async (req, res) => {
+    try {
+      const { assignmentId } = req.params;
+      const {
+        title,
+        overview,
+        objective,
+        techStack,
+        description,
+        difficulty,
+        totalPoints,
+        timeLimitHours,
+      } = req.body;
 
-    // Validate assignmentId
-    if (!assignmentId) {
-      return res.status(400).json({ error: "assignmentId is required" });
-    }
+      // Validate assignmentId
+      if (!assignmentId) {
+        return res.status(400).json({ error: "assignmentId is required" });
+      }
 
-    // Check if assignment exists
-    const existingAssignment = await prisma.assignment.findUnique({
-      where: { id: assignmentId },
-    });
+      // Check if assignment exists
+      const existingAssignment = await prisma.assignment.findUnique({
+        where: { id: assignmentId },
+      });
 
-    if (!existingAssignment) {
-      return res.status(404).json({ error: "Assignment not found" });
-    }
+      if (!existingAssignment) {
+        return res.status(404).json({ error: "Assignment not found" });
+      }
 
-    // Validate difficulty if provided
-    let validatedDifficulty = existingAssignment.difficulty;
-    if (difficulty) {
-      validatedDifficulty = validateDifficulty(difficulty);
-    }
+      // Validate difficulty if provided
+      let validatedDifficulty = existingAssignment.difficulty;
+      if (difficulty) {
+        validatedDifficulty = validateDifficulty(difficulty);
+      }
 
-    // Prepare update data
-    const updateData = {
-      ...(title && { title }),
-      ...(overview && { overview }),
-      ...(objective && { objective }),
-      ...(techStack && { techStack: Array.isArray(techStack) ? techStack : [techStack] }),
-      ...(description && { description }),
-      ...(difficulty && { difficulty: validatedDifficulty }),
-      ...(totalPoints && { totalPoints: parseInt(totalPoints) }),
-      ...(timeLimitHours && { timeLimitHours: parseInt(timeLimitHours) }),
-    };
+      // Prepare update data
+      const updateData = {
+        ...(title && { title }),
+        ...(overview && { overview }),
+        ...(objective && { objective }),
+        ...(techStack && {
+          techStack: Array.isArray(techStack) ? techStack : [techStack],
+        }),
+        ...(description && { description }),
+        ...(difficulty && { difficulty: validatedDifficulty }),
+        ...(totalPoints && { totalPoints: parseInt(totalPoints) }),
+        ...(timeLimitHours && { timeLimitHours: parseInt(timeLimitHours) }),
+      };
 
-    // Handle file upload if provided
-    if (req.file) {
-      updateData.downloadAssetsUrl = `/${req.file.path}`;
-      updateData.downloadAssetsName = req.file.originalname;
-    }
+      // Handle file upload if provided
+      if (req.file) {
+        updateData.downloadAssetsUrl = `/${req.file.path}`;
+        updateData.downloadAssetsName = req.file.originalname;
+      }
 
-    const updatedAssignment = await prisma.assignment.update({
-      where: { id: assignmentId },
-      data: updateData,
-      include: {
-        jobs: {
-          select: {
-            id: true,
-            title: true,
+      const updatedAssignment = await prisma.assignment.update({
+        where: { id: assignmentId },
+        data: updateData,
+        include: {
+          jobs: {
+            select: {
+              id: true,
+              title: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    res.json({
-      message: "Assignment updated successfully",
-      data: updatedAssignment,
-    });
-  } catch (err) {
-    console.error("Error updating assignment:", err);
-    res.status(500).json({ error: err.message || "Failed to update assignment" });
-  }
-});
+      res.json({
+        message: "Assignment updated successfully",
+        data: updatedAssignment,
+      });
+    } catch (err) {
+      console.error("Error updating assignment:", err);
+      res
+        .status(500)
+        .json({ error: err.message || "Failed to update assignment" });
+    }
+  },
+);
 
 // DELETE - Delete an assignment
 router.delete("/:assignmentId", requireAuth, async (req, res) => {
@@ -541,7 +550,9 @@ router.delete("/:assignmentId", requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error("Error deleting assignment:", err);
-    res.status(500).json({ error: err.message || "Failed to delete assignment" });
+    res
+      .status(500)
+      .json({ error: err.message || "Failed to delete assignment" });
   }
 });
 

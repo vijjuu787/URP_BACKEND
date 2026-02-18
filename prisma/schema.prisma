@@ -112,7 +112,8 @@ model CandidateSkill {
 model JobPosting {
   id               String            @id @default(uuid())
   title            String
-  description      String   @db.Text
+  company          String?
+  description      String ?  @db.Text
   workType         String?
   roleType         String?
   requirements     String?
