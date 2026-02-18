@@ -68,6 +68,7 @@ router.get("/all/summary", async (req, res) => {
         candidate: {
           select: {
             fullName: true,
+            resumeUrl: true,
           },
         },
       },
@@ -129,6 +130,7 @@ router.get("/all/summary", async (req, res) => {
       return {
         id: sub.id,
         candidateName: sub.candidate.fullName,
+        candidateResumeUrl: sub.candidate.resumeUrl,
         assignmentTitle:
           assignmentTitleMap[sub.assignmentId] || "Unknown Assignment",
         jobTitle: jobTitleMap[key] || "Unknown Job",
