@@ -385,7 +385,76 @@ router.post("/", requireAuth, async (req, res) => {
   }
 });
 
+// GET submission IDs by jobID
+router.get("/by-job/:jobID", async (req, res) => {
+  try {
+    const { jobID } = req.params;
 
+    // Validate jobID is provided
+    if (!jobID) {
+      return res.status(400).json({
+        error: "jobID is required",
+      });
+    }
 
+    // Verify job exists
+    const job = await prisma.jobPosting.findUnique({
+      where: { id: jobID },
+      select: {
+        id: true,
+        title: true,
+      },
+    });
+
+    if (!job) {
+      return res.status(404).json({
+        error: "Job posting not found",
+      });
+    }
+
+    // Get all submissions for this jobID
+    const submissions = await prisma.assignmentSubmission.findMany({
+      where: { jobID },
+      select: {
+        id: true,
+        jobID: true,
+        assignmentId: true,
+        candidateId: true,
+        status: true,
+        submittedAt: true,
+        createdAt: true,
+        candidate: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (submissions.length === 0) {
+      return res.json({
+        message: "No submissions found for this job",
+        jobID,
+        jobTitle: job.title,
+        count: 0,
+        data: [],
+      });
+    }
+
+    res.json({
+      message: "Submissions retrieved successfully by jobID",
+      jobID,
+      jobTitle: job.title,
+      count: submissions.length,
+      data: submissions,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 module.exports = router;
