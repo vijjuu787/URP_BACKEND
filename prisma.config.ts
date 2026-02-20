@@ -5,6 +5,22 @@
 import "dotenv/config";
 import { defineConfig, env } from "@prisma/config";
 
+// Helper to safely get DATABASE_URL without throwing if not found
+const getDatabaseUrl = () => {
+  if (process.env.DATABASE_URL) {
+    return process.env.DATABASE_URL;
+  }
+  
+  // Try to load from env, but don't throw if not found
+  try {
+    return env("DATABASE_URL");
+  } catch {
+    // Return empty string to allow build to proceed
+    // The actual DATABASE_URL will be set at runtime
+    return "";
+  }
+};
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
 
@@ -12,11 +28,7 @@ export default defineConfig({
     path: "prisma/migrations",
   },
 
-  engine: "classic",
-
   datasource: {
-    // Use process.env directly to support Render production builds
-    // where .env file is not available but DATABASE_URL is set in environment
-    url: process.env.DATABASE_URL || env("DATABASE_URL"),
+    url: getDatabaseUrl(),
   },
 });
