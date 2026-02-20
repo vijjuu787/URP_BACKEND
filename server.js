@@ -1,7 +1,5 @@
-const environment = process.env.NODE_ENV || "development";
-
 try {
-  require("dotenv").config({ path: `.env.${environment}` });
+  require("dotenv").config();
 } catch (e) {
   console.log("dotenv not available or failed to load");
 }
@@ -10,7 +8,7 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
-console.log(`✓ Starting server in ${environment.toUpperCase()} mode...`);
+console.log("✓ Starting server initialization...");
 console.log("✓ JWT_SECRET:", process.env.JWT_SECRET ? "SET" : "NOT SET");
 console.log("✓ DATABASE_URL:", process.env.DATABASE_URL ? "SET" : "NOT SET");
 
@@ -107,5 +105,5 @@ const PORT = process.env.PORT || 5100;
 })();
 
 app.listen(PORT, () => {
-  console.log(`✓ Server running on port ${PORT} in ${environment.toUpperCase()} mode`);
+  console.log(`Server running on port ${PORT}`);
 });
