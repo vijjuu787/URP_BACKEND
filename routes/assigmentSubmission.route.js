@@ -4,6 +4,59 @@ const pool = require("../db");
 const { prisma } = require("../prisma/index.js");
 const requireAuth = require("../middleware/AuthMiddleware.js");
 
+// GET submission ID by candidateID and assignmentID
+router.get("/by-candidate/:candidateId/:assignmentId", async (req, res) => {
+  try {
+    const { candidateId, assignmentId } = req.params;
+
+    // Validate parameters
+    if (!candidateId) {
+      return res.status(400).json({
+        error: "candidateId is required",
+      });
+    }
+
+    if (!assignmentId) {
+      return res.status(400).json({
+        error: "assignmentId is required",
+      });
+    }
+
+    // Find submission by candidateId and assignmentId (unique constraint)
+    const submission = await prisma.assignmentSubmission.findUnique({
+      where: {
+        assignmentId_candidateId: {
+          assignmentId,
+          candidateId,
+        },
+      },
+      select: {
+        id: true,
+        candidateId: true,
+        assignmentId: true,
+        status: true,
+        submittedAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!submission) {
+      return res.status(404).json({
+        error: "Submission not found for this candidate and assignment",
+      });
+    }
+
+    res.json({
+      message: "Submission retrieved successfully",
+      data: submission,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET submission content by submission ID
 router.get("/:submissionId/content", async (req, res) => {
   try {
@@ -363,5 +416,8 @@ router.post("/", requireAuth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+
+
 
 module.exports = router;
