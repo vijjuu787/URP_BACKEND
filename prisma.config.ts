@@ -15,6 +15,8 @@ export default defineConfig({
   engine: "classic",
 
   datasource: {
-    url: env("DATABASE_URL"),
+    // Use process.env directly to support Render production builds
+    // where .env file is not available but DATABASE_URL is set in environment
+    url: process.env.DATABASE_URL || env("DATABASE_URL"),
   },
 });
