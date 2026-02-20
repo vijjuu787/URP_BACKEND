@@ -126,7 +126,7 @@ model JobPosting {
   postDate         DateTime          @default(now())
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
-
+  assignmentSubmission  AssignmentSubmission[]
   assignments      Assignment[]      @relation("JobAssignments")  // ✅ many-to-many
 
   assignmentStarts AssignmentStart[]
@@ -170,6 +170,8 @@ model AssignmentStart {
 
 model AssignmentSubmission {
   id                  String               @id @default(uuid())
+  jobID               String
+  job                 JobPosting           @relation(fields: [jobID], references: [id], onDelete: Cascade)
   candidateId         String
   assignmentId        String
   assignmentStartedAt DateTime             @default(now())
