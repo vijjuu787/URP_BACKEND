@@ -96,40 +96,40 @@ router.post("/signin", async (req, res) => {
 });
 
 // GET /me - Get current authenticated user data
-router.get("/me", requireAuth, async (req, res) => {
-  try {
-    const userId = req.user?.id;
+// router.get("/me", requireAuth, async (req, res) => {
+//   try {
+//     const userId = req.user?.id;
 
-    if (!userId) {
-      return res.status(400).json({ error: "No user ID in token" });
-    }
+//     if (!userId) {
+//       return res.status(400).json({ error: "No user ID in token" });
+//     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        role: true,
-        resumeUrl: true,
-        resumeFileName: true,
-        resumeUploadedAt: true,
-        createdAt: true,
-      },
-    });
+//     const user = await prisma.user.findUnique({
+//       where: { id: userId },
+//       select: {
+//         id: true,
+//         email: true,
+//         fullName: true,
+//         role: true,
+//         resumeUrl: true,
+//         resumeFileName: true,
+//         resumeUploadedAt: true,
+//         createdAt: true,
+//       },
+//     });
 
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
+//     if (!user) {
+//       return res.status(404).json({ error: "User not found" });
+//     }
 
-    res.json({
-      message: "User data retrieved",
-      user,
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message || "Internal Server Error" });
-  }
-});
+//     res.json({
+//       message: "User data retrieved",
+//       user,
+//     });
+//   } catch (err) {
+//     res.status(500).json({ error: err.message || "Internal Server Error" });
+//   }
+// });
 
 // POST /logout - Clear the auth cookie
 router.post("/logout", (req, res) => {
@@ -333,7 +333,10 @@ router.get("/all", requireAuth, async (req, res) => {
 
       // Calculate total points from reviews
       const points = Math.round(
-        user.assignmentReviews.reduce((sum, review) => sum + review.totalScore, 0),
+        user.assignmentReviews.reduce(
+          (sum, review) => sum + review.totalScore,
+          0,
+        ),
       );
 
       return {
